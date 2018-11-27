@@ -100,10 +100,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private int mExpectedAdapterCount;
 
     static class ItemInfo {
+        //object为PagerAdapter的instantiateItem函数返回的对象
         Object object;
+        //position为页面的序号，即第几个页面
         int position;
+        //是否正在滚动
         boolean scrolling;
+        //页面宽度，取值为0到1，表示为页面宽度与ViewPager显示区域宽度比例，默认为1
         float widthFactor;
+        //偏移量，页面移动的偏移量，默认是0
         float offset;
     }
 
@@ -739,6 +744,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
             mAdapter.finishUpdate(this);
             mItems.clear();
+            //将页面的Views移除
             removeNonDecorViews();
             mCurItem = 0;
             scrollTo(0, 0);
@@ -764,7 +770,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 //            mAdapter.setViewPagerObserver(mObserver);
             ReflectionUtils.invoke(mAdapter, "setViewPagerObserver", new Class[]{DataSetObserver.class}, new PagerObserver[]{mObserver});
             mPopulatePending = false;
+            //保存上一次是否是第一次layout
             final boolean wasFirstLayout = mFirstLayout;
+            //设定当前是第一次layout
             mFirstLayout = true;
             mExpectedAdapterCount = mAdapter.getCount();
             if (mRestoredCurItem >= 0) {
@@ -774,6 +782,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 mRestoredAdapterState = null;
                 mRestoredClassLoader = null;
             } else if (!wasFirstLayout) {
+                //之前不是第一次Layout 还存在旧的视图需要销毁,然后再创建新的
                 populate();
             } else {
                 requestLayout();
@@ -1220,7 +1229,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             setScrollingCacheEnabled(false);
             return;
         }
-
+        // startX
         int sx;
         boolean wasScrolling = (mScroller != null) && !mScroller.isFinished();
         if (wasScrolling) {
@@ -1250,15 +1259,19 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         final int width = getClientWidth();
         final int halfWidth = width / 2;
+        //滑动距离占宽度的比例
         final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dx) / width);
+        //进行变速
         final float distance = halfWidth + halfWidth
                 * distanceInfluenceForSnapDuration(distanceRatio);
 
         int duration;
         velocity = Math.abs(velocity);
         if (velocity > 0) {
+            //推算出需要滑动的时间：4倍的手指滑动时间
             duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
         } else {
+            //如果手指滑动速度0，就自己推算滑动时间
             final float pageWidth = width * mAdapter.getPageWidth(mCurItem);
             final float pageDelta = (float) Math.abs(dx) / (pageWidth + mPageMargin);
             duration = (int) ((pageDelta + 1) * 100);
@@ -2063,6 +2076,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         mBottomPageBounds = height - paddingBottom;
         mDecorChildCount = decorCount;
 
+        //如果是第一次layout 先翻到第一页
         if (mFirstLayout) {
             scrollToItem(mCurItem, false, 0, false);
         }
@@ -2071,7 +2085,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     @Override
     public void computeScroll() {
+        //标记当前正在移动
         mIsScrollStarted = true;
+        //确保mScroller还没结束滑动，并开始计算滑动位置
         if (!mScroller.isFinished() && mScroller.computeScrollOffset()) {
             int oldX = getScrollX();
             int oldY = getScrollY();
@@ -2102,6 +2118,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 // Let's skip this call since it doesn't make sense in this state
                 return false;
             }
+            // 如果子类集成，必须调用父类的onPageScrolled 里面会使 mCalledSuper = true;/
             mCalledSuper = false;
             onPageScrolled(0, 0, 0);
             if (!mCalledSuper) {
@@ -2111,12 +2128,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             return false;
         }
         final CoolViewPager.ItemInfo ii = infoForCurrentScrollPosition();
+        // 获取显示区域的宽度
         final int width = getClientWidth();
+        //加上外边距后的宽度
         final int widthWithMargin = width + mPageMargin;
         final float marginOffset = (float) mPageMargin / width;
+        //当前是第几个页面
         final int currentPage = ii.position;
+        //计算当前页面的偏移量 [0,1) 如果pageOffset不等于0，则下个页面可见
         final float pageOffset = (((float) xpos / width) - ii.offset)
                 / (ii.widthFactor + marginOffset);
+        //当前页面移动的像素点个数
         final int offsetPixels = (int) (pageOffset * widthWithMargin);
 
         mCalledSuper = false;
@@ -2353,6 +2375,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         // Nothing more to do here if we have decided whether or not we
         // are dragging.
+        //不是按下，判断是否拖拽页面，是就拦截，不是就不拦截
         if (action != MotionEvent.ACTION_DOWN) {
             if (mIsBeingDragged) {
                 if (DEBUG) Log.v(TAG, "Intercept returning true!");
@@ -2377,6 +2400,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
 
         switch (action) {
+            //如果是手指移动，准备要开始拖拽页面了
             case MotionEvent.ACTION_MOVE: {
                 /*
                  * mIsBeingDragged == false, otherwise the shortcut would have caught it. Check
@@ -2396,6 +2420,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 final int pointerIndex = ev.findPointerIndex(activePointerId);
                 final float x = ev.getX(pointerIndex);
                 final float dx = x - mLastMotionX;
+                //定义x的移动距离
                 final float xDiff = Math.abs(dx);
                 final float y = ev.getY(pointerIndex);
                 final float yDiff = Math.abs(y - mInitialMotionY);
@@ -2415,11 +2440,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     }
                     return false;
                 }
+                //x移动的距离大于最小距离，且斜率小于0.5，则认为是水平方向上的移动
                 if (xDiff > mTouchSlop && xDiff * 0.5f > yDiff) {
                     if (DEBUG) Log.v(TAG, "Starting drag!");
                     mIsBeingDragged = true;
                     requestParentDisallowInterceptTouchEvent(true);
                     setScrollState(SCROLL_STATE_DRAGGING);
+                    //保存当前的移动位置
                     mLastMotionX = dx > 0
                             ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
                     mLastMotionY = y;
@@ -2453,9 +2480,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
                 mIsScrollStarted = true;
                 mScroller.computeScrollOffset();
+
+                //如果当前滚动状态为正在将页面放置到最终位置，且当前位置距离最终位置足够远
                 if (mScrollState == SCROLL_STATE_SETTLING
                         && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
                     // Let the user 'catch' the pager as it animates.
+                    //如果此时按下，需要停止当前的滑动动画
                     mScroller.abortAnimation();
                     mPopulatePending = false;
                     populate();
@@ -2495,6 +2525,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
          * The only time we want to intercept motion events is if we are in the
          * drag mode.
          */
+        //只有当前是拖拽页面时才拦截
         return mIsBeingDragged;
     }
 
