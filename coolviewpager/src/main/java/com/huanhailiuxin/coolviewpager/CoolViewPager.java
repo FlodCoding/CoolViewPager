@@ -97,6 +97,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * Used to track what the expected number of items in the adapter should be.
      * If the app changes this when we don't expect it, we'll throw a big obnoxious exception.
      */
+    //自己认为Adapter数据个数，在setAdapter(),还有dataSetChanged 会更新它的值
     private int mExpectedAdapterCount;
 
     static class ItemInfo {
@@ -112,6 +113,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         float offset;
     }
 
+    //页面排序，倒序
     private static final Comparator<ItemInfo> COMPARATOR = new Comparator<ItemInfo>() {
         @Override
         public int compare(CoolViewPager.ItemInfo lhs, CoolViewPager.ItemInfo rhs) {
@@ -119,6 +121,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     };
 
+    //插值器，用来根据不同的时间来控制滑动速度
     private static final Interpolator sInterpolator = new Interpolator() {
         @Override
         public float getInterpolation(float t) {
@@ -127,6 +130,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     };
 
+    //已经缓存的页面，这个数量由 mOffscreenPageLimit来决定的
     private final ArrayList<ItemInfo> mItems = new ArrayList<ItemInfo>();
     private final CoolViewPager.ItemInfo mTempItem = new CoolViewPager.ItemInfo();
 
@@ -151,6 +155,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     // Offsets of the first and last items, if known.
     // Set during population, used to determine if we are at the beginning
     // or end of the pager data set during touch scrolling.
+    //第一个和最后一个滑动的偏移量
     private float mFirstOffset = -Float.MAX_VALUE;
     private float mLastOffset = Float.MAX_VALUE;
 
@@ -167,7 +172,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private boolean mIsUnableToDrag;
     private int mDefaultGutterSize;
     private int mGutterSize;
-    private int mTouchSlop;
+    private int mTouchSlop;//系统所能识别的最小滑动距离
     /**
      * Position of the last motion event.
      */
@@ -189,9 +194,10 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Determines speed during touch scrolling
      */
+    //追踪滑动时的手指滑动速度
     private VelocityTracker mVelocityTracker;
-    private int mMinimumVelocity;
-    private int mMaximumVelocity;
+    private int mMinimumVelocity;//最小滑动速度 px
+    private int mMaximumVelocity;//最大滑动速度 px （在FLING状态下）
     private int mFlingDistance;
     private int mCloseEnough;
 
@@ -232,17 +238,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * Indicates that the pager is in an idle, settled state. The current page
      * is fully in view and no animation is in progress.
      */
-    public static final int SCROLL_STATE_IDLE = 0;
+    public static final int SCROLL_STATE_IDLE = 0;     //空闲
 
     /**
      * Indicates that the pager is currently being dragged by the user.
      */
-    public static final int SCROLL_STATE_DRAGGING = 1;
+    public static final int SCROLL_STATE_DRAGGING = 1;  //滑动中
 
     /**
      * Indicates that the pager is in the process of settling to a final position.
      */
-    public static final int SCROLL_STATE_SETTLING = 2;
+    public static final int SCROLL_STATE_SETTLING = 2;  //滑动结束
 
     private final Runnable mEndScrollRunnable = new Runnable() {
         @Override
@@ -632,7 +638,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     }
 
     void initViewPager() {
+        //就是会调用 Draw()
         setWillNotDraw(false);
+        //先分发给Child View进行处理，如果所有的Child View都没有处理，则自己再处理
         setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
         setFocusable(true);
         final Context context = getContext();
@@ -640,9 +648,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         final ViewConfiguration configuration = ViewConfiguration.get(context);
         final float density = context.getResources().getDisplayMetrics().density;
 
+        //系统所能识别的最小滑动距离
         mTouchSlop = configuration.getScaledPagingTouchSlop();
         mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
+
+        //左右边的边缘效果
         mLeftEdge = new EdgeEffect(context);
         mRightEdge = new EdgeEffect(context);
         //添加顶部及底部的边缘效果
@@ -1291,6 +1302,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         ViewCompat.postInvalidateOnAnimation(this);
     }
 
+    //添加Item到Items里面，会调用到instantiateItem来生成新的Item
     CoolViewPager.ItemInfo addNewItem(int position, int index) {
         CoolViewPager.ItemInfo ii = new CoolViewPager.ItemInfo();
         ii.position = position;
@@ -1380,13 +1392,14 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     }
 
     void populate(int newCurrentItem) {
-        CoolViewPager.ItemInfo oldCurInfo = null;
+        ItemInfo oldCurInfo = null;
         if (mCurItem != newCurrentItem) {
             oldCurInfo = infoForPosition(mCurItem);
             mCurItem = newCurrentItem;
         }
 
         if (mAdapter == null) {
+            //对页卡的顺序进行排序
             sortChildDrawingOrder();
             return;
         }
@@ -1408,13 +1421,18 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             return;
         }
 
+        //告诉 PagerAdapter要开始更新了，其实startUpdate 里面好像也没做什么事
         mAdapter.startUpdate(this);
 
         final int pageLimit = mOffscreenPageLimit;
+        //起始位置：当前的页面减去缓存页面数量，并确保开始的位置是大于等于0。
         final int startPos = Math.max(0, mCurItem - pageLimit);
+
+        //结束位置：当前页面加上缓存页面的数量，并确保是小于数据源的个数
         final int N = mAdapter.getCount();
         final int endPos = Math.min(N - 1, mCurItem + pageLimit);
 
+        //如果从Adapter拿到的大小和自认为的大小不一样，那说明Adapter数据源的个数发生变化了，抛出异常
         if (N != mExpectedAdapterCount) {
             String resName;
             try {
@@ -1432,15 +1450,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         // Locate the currently focused item or add it if needed.
         int curIndex = -1;
-        CoolViewPager.ItemInfo curItem = null;
+        ItemInfo curItem = null;
         for (curIndex = 0; curIndex < mItems.size(); curIndex++) {
-            final CoolViewPager.ItemInfo ii = mItems.get(curIndex);
+            //因为position不一定跟list的坐标一样，所以要取出来判断一下
+            final ItemInfo ii = mItems.get(curIndex);
             if (ii.position >= mCurItem) {
                 if (ii.position == mCurItem) curItem = ii;
                 break;
             }
         }
 
+        //在mItems找不到，准备添加进去
         if (curItem == null && N > 0) {
             curItem = addNewItem(mCurItem, curIndex);
         }
@@ -1450,11 +1470,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         // If we have no current item we have no work to do.
         if (curItem != null) {
             float extraWidthLeft = 0.f;
+            //获取左边的页面
             int itemIndex = curIndex - 1;
-            CoolViewPager.ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+            ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+            //显示区域的宽度
             final int clientWidth = getClientWidth();
+            //左边需要的宽度
             final float leftWidthNeeded = clientWidth <= 0 ? 0 :
                     2.f - curItem.widthFactor + (float) getPaddingLeft() / (float) clientWidth;
+            //从左边第一个页面开始进行遍历
             for (int pos = mCurItem - 1; pos >= 0; pos--) {
                 if (extraWidthLeft >= leftWidthNeeded && pos < startPos) {
                     if (ii == null) {
@@ -1565,6 +1589,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
+    //用来更新页卡的排序，
     private void sortChildDrawingOrder() {
         if (mDrawingOrder != DRAW_ORDER_DEFAULT) {
             if (mDrawingOrderedChildren == null) {
@@ -1846,7 +1871,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         // Children are just made to fill our space.
         // 意思是只能在一个显示区域内显示一个Children
-        // 去除掉内边距就是children 的宽高
+        // ViewPager的宽高去除掉内边距就是children 的宽高
         int childWidthSize = measuredWidth - getPaddingLeft() - getPaddingRight();
         int childHeightSize = getMeasuredHeight() - getPaddingTop() - getPaddingBottom();
 
@@ -1919,6 +1944,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         size = getChildCount();
         for (int i = 0; i < size; ++i) {
             final View child = getChildAt(i);
+            //对GONE的页卡就不测量了
             if (child.getVisibility() != GONE) {
                 if (DEBUG) {
                     Log.v(TAG, "Measuring #" + i + " " + child + ": " + mChildWidthMeasureSpec);
@@ -1980,14 +2006,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         int paddingRight = getPaddingRight();
         int paddingBottom = getPaddingBottom();
         final int scrollX = getScrollX();
-
+        //DecorView 数量
         int decorCount = 0;
 
         // First pass - decor views. We need to do this in two passes so that
         // we have the proper offsets for non-decor views later.
-        // 先对DecorView进行Layout
+        // 先对DecorView进行Layout,之所以先对DecorView布局，是为了让普通的页卡能有合适的偏移
         for (int i = 0; i < count; i++) {
             final View child = getChildAt(i);
+            //布局的视图必须不是Gone的
             if (child.getVisibility() != GONE) {
                 final LayoutParams lp = (LayoutParams) child.getLayoutParams();
                 int childLeft = 0;
@@ -2038,6 +2065,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
         }
 
+        //页卡的宽度
         final int childWidth = width - paddingLeft - paddingRight;
         // Page views. Do this once we have the right padding offsets from above.
         for (int i = 0; i < count; i++) {
@@ -2045,7 +2073,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             if (child.getVisibility() != GONE) {
                 final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
                 CoolViewPager.ItemInfo ii;
+                //infoForChild 会调用Adapter的isViewFromObject
                 if (!lp.isDecor && (ii = infoForChild(child)) != null) {
+                    //子页卡的左偏移量，第一个是loff是0，第二个是一个页面向左偏移一个页面的宽度，第三个是向右偏移一个页面的宽度
                     int loff = (int) (childWidth * ii.offset);
                     int childLeft = paddingLeft + loff;
                     int childTop = paddingTop;
@@ -3548,6 +3578,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         /**
          * Width as a 0-1 multiplier of the measured pager width
          */
+        //widthFactor取值是[0,1]的浮点数,表示在ViewPager显示区域中的宽度比例
         float widthFactor = 0.f;
 
         /**

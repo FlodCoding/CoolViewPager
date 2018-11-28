@@ -43,6 +43,7 @@ public class ActivityOrientation extends BaseActivity {
         //
         vp = findViewById(R.id.vp);
         vp.setScrollMode(CoolViewPager.ScrollMode.HORIZONTAL);
+        vp.setOffscreenPageLimit(2);
         vp.setAdapter(adapter1);
     }
 
@@ -86,6 +87,7 @@ public class ActivityOrientation extends BaseActivity {
                 ((ViewGroup)views.get(position).getParent()).removeView(views.get(position));
             }
             container.addView(views.get(position));
+            views.get(position).setTranslationX(20);
             return views.get(position);
         }
         @Override
