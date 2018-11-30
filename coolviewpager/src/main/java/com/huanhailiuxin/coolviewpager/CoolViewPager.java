@@ -1424,6 +1424,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         //告诉 PagerAdapter要开始更新了，其实startUpdate 里面好像也没做什么事
         mAdapter.startUpdate(this);
 
+        //一般情况下mItems的长度是 2*pageLimit + 1
         final int pageLimit = mOffscreenPageLimit;
         //起始位置：当前的页面减去缓存页面数量，并确保开始的位置是大于等于0。
         final int startPos = Math.max(0, mCurItem - pageLimit);
@@ -1449,6 +1450,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
 
         // Locate the currently focused item or add it if needed.
+        // ***从mItems拿到当前焦点的ItemInfo
         int curIndex = -1;
         ItemInfo curItem = null;
         for (curIndex = 0; curIndex < mItems.size(); curIndex++) {
@@ -1460,7 +1462,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
         }
 
-        //在mItems找不到，准备添加进去
+        //在mItems还未保存这个ItemInfo，则创建这个ItemInfo
         if (curItem == null && N > 0) {
             curItem = addNewItem(mCurItem, curIndex);
         }
@@ -1468,22 +1470,31 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         // Fill 3x the available width or up to the number of offscreen
         // pages requested to either side, whichever is larger.
         // If we have no current item we have no work to do.
+        //**管理mItems中的其余对象
+        //由于mItems的长度是有限的，当页面总数大于mItems的长度时需要不断添加和移除ItemInfo进来
         if (curItem != null) {
+            //**1、开始调整curItem左边的对象
+            //左边整体的的宽度（下面会进行累加计算，用一个抽象的数字代替）
             float extraWidthLeft = 0.f;
-            //获取左边的页面
+            //curIndex是mItems的当前索引，itemIndex是curIndex左边的索引
             int itemIndex = curIndex - 1;
+            //获取左边的ItemInfo对象
             ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
             //显示区域的宽度
             final int clientWidth = getClientWidth();
-            //左边需要的宽度
+            //左边需要的宽度:实际宽度和可视区域的比例，默认情况下是1.0f
             final float leftWidthNeeded = clientWidth <= 0 ? 0 :
                     2.f - curItem.widthFactor + (float) getPaddingLeft() / (float) clientWidth;
-            //从左边第一个页面开始进行遍历
+            //遍历左半部分
             for (int pos = mCurItem - 1; pos >= 0; pos--) {
+                ////pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
                 if (extraWidthLeft >= leftWidthNeeded && pos < startPos) {
+
+                    //如果是空的话就退出循环，说明已经遍历完了
                     if (ii == null) {
                         break;
                     }
+                    //从下面拿到的ItemInfo，如果不为空就走下面的销毁和移除的流程
                     if (pos == ii.position && !ii.scrolling) {
                         mItems.remove(itemIndex);
                         mAdapter.destroyItem(this, pos, ii.object);
@@ -1491,25 +1502,29 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                             Log.i(TAG, "populate() - destroyItem() with pos: " + pos
                                     + " view: " + ((View) ii.object));
                         }
-                        itemIndex--;
-                        curIndex--;
-                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+                        itemIndex--; //删除后左边的的索引也要减1
+                        curIndex--;  //当前的索引也要减1
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //然后会再次进入，并走上面的break
                     }
+                    //如果左边的ItemInfo对象不为null
                 } else if (ii != null && pos == ii.position) {
-                    extraWidthLeft += ii.widthFactor;
-                    itemIndex--;
-                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+                    extraWidthLeft += ii.widthFactor; //累加curItem左边需要的宽度
+                    itemIndex--;                      //在再向左移动一个位置
+                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
+                    //如果左边的ItemInfo对象为null
                 } else {
-                    ii = addNewItem(pos, itemIndex + 1);
-                    extraWidthLeft += ii.widthFactor;
-                    curIndex++;
-                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+                    ii = addNewItem(pos, itemIndex + 1);//新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
+                    extraWidthLeft += ii.widthFactor;         //累加左边的宽度
+                    curIndex++;                               //因为左边插入了一个对象，所以当前curIndex要加1
+                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
                 }
             }
 
-            float extraWidthRight = curItem.widthFactor;
-            itemIndex = curIndex + 1;
+            //**2、开始调整右半边的对象
+            float extraWidthRight = curItem.widthFactor; //右边整体宽度
+            itemIndex = curIndex + 1;                    //右边对象的索引
             if (extraWidthRight < 2.f) {
+                //判断方式与上面大致相同
                 ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
                 final float rightWidthNeeded = clientWidth <= 0 ? 0 :
                         (float) getPaddingRight() / (float) clientWidth + 2.f;
@@ -1549,9 +1564,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
             }
         }
-
+        //回调PagerAdapter的setPrimaryItem，告诉PagerAdapter当前显示的页面
         mAdapter.setPrimaryItem(this, mCurItem, curItem != null ? curItem.object : null);
-
+        //回调PagerAdapter的finishUpdate，告诉PagerAdapter页面更新结束
         mAdapter.finishUpdate(this);
 
         // Check width measurement of current pages and drawing sort order.
@@ -1881,7 +1896,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
          * views won't intersect. We will pin to edges based on gravity.
          */
 
-        //测量DecorView
+        //===测量DecorView
         int size = getChildCount();
         for (int i = 0; i < size; ++i) {
             final View child = getChildAt(i);
@@ -1936,11 +1951,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         mChildHeightMeasureSpec = MeasureSpec.makeMeasureSpec(childHeightSize, MeasureSpec.EXACTLY);
 
         // Make sure we have created all fragments that we need to have shown.
+        // 从Adapter中更新childView
         mInLayout = true;
         populate();
         mInLayout = false;
 
         // Page views next.
+        //===测量ChildView
         size = getChildCount();
         for (int i = 0; i < size; ++i) {
             final View child = getChildAt(i);
