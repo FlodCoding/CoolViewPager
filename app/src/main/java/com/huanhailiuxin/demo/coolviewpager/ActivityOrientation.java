@@ -33,7 +33,15 @@ public class ActivityOrientation extends BaseActivity {
         items1.add(createImageView(R.mipmap.i2));
         items1.add(createImageView(R.mipmap.i5));
         items1.add(createImageView(R.mipmap.i6));
+        items1.add(createImageView(R.mipmap.i1));
+        items1.add(createImageView(R.mipmap.i2));
+        items1.add(createImageView(R.mipmap.i5));
+        items1.add(createImageView(R.mipmap.i6));
         List<View> items2 = new ArrayList<>();
+        items2.add(createImageView(R.mipmap.img3));
+        items2.add(createImageView(R.mipmap.img5));
+        items2.add(createImageView(R.mipmap.img6));
+        items2.add(createImageView(R.mipmap.img7));
         items2.add(createImageView(R.mipmap.img3));
         items2.add(createImageView(R.mipmap.img5));
         items2.add(createImageView(R.mipmap.img6));
@@ -43,7 +51,7 @@ public class ActivityOrientation extends BaseActivity {
         //
         vp = findViewById(R.id.vp);
         vp.setScrollMode(CoolViewPager.ScrollMode.HORIZONTAL);
-        vp.setOffscreenPageLimit(2);
+        vp.setOffscreenPageLimit(1);
         vp.setAdapter(adapter1);
     }
 
@@ -87,7 +95,6 @@ public class ActivityOrientation extends BaseActivity {
                 ((ViewGroup)views.get(position).getParent()).removeView(views.get(position));
             }
             container.addView(views.get(position));
-            views.get(position).setTranslationX(20);
             return views.get(position);
         }
         @Override

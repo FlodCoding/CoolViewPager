@@ -745,7 +745,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         //设置Adapter前先停止自动滚动
         stopTimer();
         if (mAdapter != null) {
-//            mAdapter.setViewPagerObserver(null);
+            //mAdapter.setViewPagerObserver(null);
             //setViewPagerObserver不是public方法,package外不能调用,使用反射调用
             ReflectionUtils.invoke(mAdapter, "setViewPagerObserver", new Class[]{DataSetObserver.class}, new Object[]{null});
             mAdapter.startUpdate(this);
@@ -1391,6 +1391,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         populate(mCurItem);
     }
 
+    //mItems类似于一排窗口这些窗口的长度是mOffscreenPageLimit*2+1
+    //mItems的第一个ItemInfo的position有可能从3开始，但也是按照顺序排列下去的
     void populate(int newCurrentItem) {
         ItemInfo oldCurInfo = null;
         if (mCurItem != newCurrentItem) {
@@ -1454,8 +1456,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         int curIndex = -1;
         ItemInfo curItem = null;
         for (curIndex = 0; curIndex < mItems.size(); curIndex++) {
-            //因为position不一定跟list的坐标一样，所以要取出来判断一下
+            //从mItems列表中找到这个mCurItem的Pos的ItemInfo
             final ItemInfo ii = mItems.get(curIndex);
+            //>= 是因为Item的position总是会大于等于在列表的序号
             if (ii.position >= mCurItem) {
                 if (ii.position == mCurItem) curItem = ii;
                 break;
@@ -1555,6 +1558,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 }
             }
 
+            //计算Items的偏移量
             calculatePageOffsets(curItem, curIndex, oldCurInfo);
         }
 
@@ -1629,6 +1633,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         if (oldCurInfo != null) {
             final int oldCurPosition = oldCurInfo.position;
             // Base offsets off of oldCurInfo.
+            //旧的在左边
             if (oldCurPosition < curItem.position) {
                 int itemIndex = 0;
                 CoolViewPager.ItemInfo ii = null;
@@ -1649,6 +1654,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     ii.offset = offset;
                     offset += ii.widthFactor + marginOffset;
                 }
+                //旧的在右边
             } else if (oldCurPosition > curItem.position) {
                 int itemIndex = mItems.size() - 1;
                 CoolViewPager.ItemInfo ii = null;
@@ -2143,7 +2149,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
             if (oldX != x || oldY != y) {
                 scrollTo(x, y);
+                //调用pageScrolled 只有在没有child情况下才会false
                 if (!pageScrolled(x)) {
+                    //如果没有子页面中断动画并且滑动到x=0位置，但是y保持滑动
                     mScroller.abortAnimation();
                     scrollTo(0, y);
                 }
