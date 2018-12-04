@@ -243,12 +243,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Indicates that the pager is currently being dragged by the user.
      */
-    public static final int SCROLL_STATE_DRAGGING = 1;  //滑动中
+    public static final int SCROLL_STATE_DRAGGING = 1;  //滑动中（手指还没释放）
 
     /**
      * Indicates that the pager is in the process of settling to a final position.
      */
-    public static final int SCROLL_STATE_SETTLING = 2;  //滑动结束
+    public static final int SCROLL_STATE_SETTLING = 2;  //正在滑动到最终位置（手指释放了）
 
     private final Runnable mEndScrollRunnable = new Runnable() {
         @Override
@@ -2088,7 +2088,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
         }
 
-        //页卡的宽度
+        //子页面的宽度
         final int childWidth = width - paddingLeft - paddingRight;
         // Page views. Do this once we have the right padding offsets from above.
         for (int i = 0; i < count; i++) {
@@ -2098,7 +2098,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 CoolViewPager.ItemInfo ii;
                 //infoForChild 会调用Adapter的isViewFromObject
                 if (!lp.isDecor && (ii = infoForChild(child)) != null) {
-                    //子页卡的左偏移量，第一个是loff是0，第二个是一个页面向左偏移一个页面的宽度，第三个是向右偏移一个页面的宽度
+                    //子页卡的左偏移量，第一个是loff是0，第二个是一个页面向左偏移一个页面的宽度，以此类推
                     int loff = (int) (childWidth * ii.offset);
                     int childLeft = paddingLeft + loff;
                     int childTop = paddingTop;
@@ -2158,6 +2158,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
 
             // Keep on drawing until the animation has finished.
+            //保持绘制，并且是在上一帧动画完成才重绘
             ViewCompat.postInvalidateOnAnimation(this);
             return;
         }
@@ -2370,6 +2371,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
+    //手指是否在页面的缝隙滑动(dx<0向左，dx>0向右)
     private boolean isGutterDrag(float x, float dx) {
         return (x < mGutterSize && dx > 0) || (x > getWidth() - mGutterSize && dx < 0);
     }
@@ -2418,6 +2420,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
             // Release the drag.
             if (DEBUG) Log.v(TAG, "Intercept done!");
+            //重置一些变量
             resetTouch();
             /**
              * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
@@ -2425,13 +2428,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             if (mScrollMode == ScrollMode.VERTICAL) {
                 swapTouchEvent(ev);
             }
+            //触摸结束
             return false;
         }
 
         // Nothing more to do here if we have decided whether or not we
         // are dragging.
-        //不是按下，判断是否拖拽页面，是就拦截，不是就不拦截
+        //不是按下
         if (action != MotionEvent.ACTION_DOWN) {
+            //如果在拖拽页面就拦截
             if (mIsBeingDragged) {
                 if (DEBUG) Log.v(TAG, "Intercept returning true!");
                 /**
@@ -2442,6 +2447,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 }
                 return true;
             }
+            //如果不允许拖拽页面就  放过一切触摸事件
             if (mIsUnableToDrag) {
                 if (DEBUG) Log.v(TAG, "Intercept returning false!");
                 /**
@@ -2455,6 +2461,53 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
 
         switch (action) {
+
+            case MotionEvent.ACTION_DOWN: {
+                /*
+                 * Remember location of down touch.
+                 * ACTION_DOWN always refers to pointer index 0.
+                 */
+                //记录按下的点位置
+                mLastMotionX = mInitialMotionX = ev.getX();
+                mLastMotionY = mInitialMotionY = ev.getY();
+                //记录按下的手指id
+                mActivePointerId = ev.getPointerId(0);
+                //重置可以拖拽切换页面
+                mIsUnableToDrag = false;
+                //标记开始滚动
+                mIsScrollStarted = true;
+                //手动调用计算滑动的偏移量
+                mScroller.computeScrollOffset();
+
+                //如果此时按下，且页面正在放到最终位置
+                //且当前位置距离最终位置足够远
+                if (mScrollState == SCROLL_STATE_SETTLING
+                        && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
+                    // Let the user 'catch' the pager as it animates.
+                    // 需要停止当前的滑动动画，然后暂停滑动
+                    mScroller.abortAnimation();
+                    mPopulatePending = false;
+                    populate();
+                    //状态改成正在拖拽
+                    mIsBeingDragged = true;
+                    //屏蔽父View的触摸拦截，总是会把事件下发到这里
+                    requestParentDisallowInterceptTouchEvent(true);
+                    //设置滑动状态为滑动中
+                    setScrollState(SCROLL_STATE_DRAGGING);
+                } else {
+                    //结束滚动
+                    completeScroll(false);
+                    mIsBeingDragged = false;
+                }
+
+                if (DEBUG) {
+                    Log.v(TAG, "Down at " + mLastMotionX + "," + mLastMotionY
+                            + " mIsBeingDragged=" + mIsBeingDragged
+                            + "mIsUnableToDrag=" + mIsUnableToDrag);
+                }
+                break;
+            }
+
             //如果是手指移动，准备要开始拖拽页面了
             case MotionEvent.ACTION_MOVE: {
                 /*
@@ -2466,26 +2519,30 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                  * Locally do absolute value. mLastMotionY is set to the y value
                  * of the down event.
                  */
-                final int activePointerId = mActivePointerId;
+                final int activePointerId = mActivePointerId; //拿到触摸点Id，在ACTION_DOWN生成，这个跟多点触摸有关系
                 if (activePointerId == INVALID_POINTER) {
                     // If we don't have a valid id, the touch down wasn't on content.
                     break;
                 }
-
+                //根据触摸点的id来区分不同的手指，仅仅需要关注一个手指
                 final int pointerIndex = ev.findPointerIndex(activePointerId);
                 final float x = ev.getX(pointerIndex);
                 final float dx = x - mLastMotionX;
                 //定义x的移动距离
                 final float xDiff = Math.abs(dx);
                 final float y = ev.getY(pointerIndex);
+                //TODO 为什么不是mLastMotionY而是mInitialMotionY
                 final float yDiff = Math.abs(y - mInitialMotionY);
                 if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
 
+                //手指不在页面之间的边缘且页面可以滑动
                 if (dx != 0 && !isGutterDrag(mLastMotionX, dx)
                         && canScroll(this, false, (int) dx, (int) x, (int) y)) {
                     // Nested view has scrollable area under this point. Let it be handled there.
+                    //更新x,y的移动坐标
                     mLastMotionX = x;
                     mLastMotionY = y;
+                    //标记现在不可以再拖拽页面了，防止另一个手指按下（ACTION_DOWN）而被影响到
                     mIsUnableToDrag = true;
                     /**
                      * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
@@ -2519,43 +2576,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     if (performDrag(x)) {
                         ViewCompat.postInvalidateOnAnimation(this);
                     }
-                }
-                break;
-            }
-
-            case MotionEvent.ACTION_DOWN: {
-                /*
-                 * Remember location of down touch.
-                 * ACTION_DOWN always refers to pointer index 0.
-                 */
-                mLastMotionX = mInitialMotionX = ev.getX();
-                mLastMotionY = mInitialMotionY = ev.getY();
-                mActivePointerId = ev.getPointerId(0);
-                mIsUnableToDrag = false;
-
-                mIsScrollStarted = true;
-                mScroller.computeScrollOffset();
-
-                //如果当前滚动状态为正在将页面放置到最终位置，且当前位置距离最终位置足够远
-                if (mScrollState == SCROLL_STATE_SETTLING
-                        && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
-                    // Let the user 'catch' the pager as it animates.
-                    //如果此时按下，需要停止当前的滑动动画
-                    mScroller.abortAnimation();
-                    mPopulatePending = false;
-                    populate();
-                    mIsBeingDragged = true;
-                    requestParentDisallowInterceptTouchEvent(true);
-                    setScrollState(SCROLL_STATE_DRAGGING);
-                } else {
-                    completeScroll(false);
-                    mIsBeingDragged = false;
-                }
-
-                if (DEBUG) {
-                    Log.v(TAG, "Down at " + mLastMotionX + "," + mLastMotionY
-                            + " mIsBeingDragged=" + mIsBeingDragged
-                            + "mIsUnableToDrag=" + mIsUnableToDrag);
                 }
                 break;
             }
@@ -3183,6 +3203,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Tests scrollability within child views of v given a delta of dx.
+     * 主要判断了滑动是否有在视图之内进行，用dx判断子视图里面的视图是否可以水平滑动canScrollHorizontally(-dx)
      *
      * @param v      View to test for horizontal scrollability
      * @param checkV Whether the view v passed should itself be checked for scrollability (true),
