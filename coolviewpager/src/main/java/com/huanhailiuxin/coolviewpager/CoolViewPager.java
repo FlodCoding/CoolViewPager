@@ -206,7 +206,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     // "catching" the flinging pager.
     private static final int CLOSE_ENOUGH = 2; // dp
 
-    private boolean mFakeDragging;
+    private boolean mFakeDragging; //正在进行假拖动
     private long mFakeDragBeginTime;
 
     private EdgeEffect mLeftEdge;
@@ -1391,7 +1391,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         populate(mCurItem);
     }
 
-    //mItems类似于一排窗口这些窗口的长度是mOffscreenPageLimit*2+1
+    //mItems类似于一排窗口这些窗口的长度是mOffscreenPageLimit*2+1，这个排窗口是不断滑动的
     //mItems的第一个ItemInfo的position有可能从3开始，但也是按照顺序排列下去的
     void populate(int newCurrentItem) {
         ItemInfo oldCurInfo = null;
@@ -2470,7 +2470,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 //记录按下的点位置
                 mLastMotionX = mInitialMotionX = ev.getX();
                 mLastMotionY = mInitialMotionY = ev.getY();
-                //记录按下的手指id
+                //记录按下的手指id,索引到的总是第一个触碰到的手指也就是0
                 mActivePointerId = ev.getPointerId(0);
                 //重置可以拖拽切换页面
                 mIsUnableToDrag = false;
@@ -2508,7 +2508,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 break;
             }
 
-            //如果是手指移动，准备要开始拖拽页面了
+            //如果是手指移动，准备要开始拖拽页面了,TODO 调试的时候发现并没有进入到这里。。。
             case MotionEvent.ACTION_MOVE: {
                 /*
                  * mIsBeingDragged == false, otherwise the shortcut would have caught it. Check
@@ -2544,9 +2544,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     mLastMotionY = y;
                     //标记现在不可以再拖拽页面了，防止另一个手指按下（ACTION_DOWN）而被影响到
                     mIsUnableToDrag = true;
-                    /**
-                     * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-                     */
+                    //如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
                     if (mScrollMode == ScrollMode.VERTICAL) {
                         swapTouchEvent(ev);
                     }
@@ -2579,7 +2577,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 }
                 break;
             }
-
+            //TODO 调试的时候发现并没有进入到这里。。。
             case MotionEvent.ACTION_POINTER_UP:
                 onSecondaryPointerUp(ev);
                 break;
@@ -2590,9 +2588,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         mVelocityTracker.addMovement(ev);
 
-        /**
-         * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-         */
+
+        //如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
         if (mScrollMode == ScrollMode.VERTICAL) {
             swapTouchEvent(ev);
         }
@@ -2606,12 +2603,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        /**
-         * 如果滑动方向是垂直方向,则将原始MotionEvent的X、Y坐标进行置换
-         */
+
+        //如果滑动方向是垂直方向,则将原始MotionEvent的X、Y坐标进行置换
         if (mScrollMode == ScrollMode.VERTICAL) {
             swapTouchEvent(ev);
         }
+
+        //如果此时正在模拟一个假的拖动，触摸事件就消费掉
         if (mFakeDragging) {
             // A fake drag is in progress already, ignore this real one
             // but still eat the touch events.
@@ -2619,43 +2617,56 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             return true;
         }
 
+        //如果按钮并且是正在触摸屏幕的边缘，就放掉这个触摸事件
         if (ev.getAction() == MotionEvent.ACTION_DOWN && ev.getEdgeFlags() != 0) {
+            // ev.getEdgeFlags() 返回的如果是非零，则代表上下左右的flag（int）值，如果返回0就代表还没有触摸到屏幕边缘
+            // 测试时这个返回值总是0，似乎这段判断意义不大
             // Don't handle edge touches immediately -- they may actually belong to one of our
             // descendants.
             return false;
         }
-
+        //没上适配器或者里面没东西就放过这个触摸事件
         if (mAdapter == null || mAdapter.getCount() == 0) {
             // Nothing to present or scroll; nothing to touch.
             return false;
         }
 
+        //滑动速度追踪器是空的就创建一个
         if (mVelocityTracker == null) {
             mVelocityTracker = VelocityTracker.obtain();
         }
         mVelocityTracker.addMovement(ev);
 
         final int action = ev.getAction();
+        //是否需要重绘
         boolean needsInvalidate = false;
 
         switch (action & MotionEvent.ACTION_MASK) {
+            //按下
             case MotionEvent.ACTION_DOWN: {
+                //停止滑动动画
                 mScroller.abortAnimation();
+                //重新开始populate()
                 mPopulatePending = false;
                 populate();
 
                 // Remember where the motion event started
+                //重新定位点击的位置，和活动的手指坐标Id
                 mLastMotionX = mInitialMotionX = ev.getX();
                 mLastMotionY = mInitialMotionY = ev.getY();
                 mActivePointerId = ev.getPointerId(0);
                 break;
             }
+            //已经按下并滑动
             case MotionEvent.ACTION_MOVE:
+                //当前没有正在拖动
                 if (!mIsBeingDragged) {
                     final int pointerIndex = ev.findPointerIndex(mActivePointerId);
+                    //找不到这个手指索引（有其他的子视图可能已经消费了这个事件）
                     if (pointerIndex == -1) {
                         // A child has consumed some touch events and put us into an inconsistent
                         // state.
+                        //重置一些与滑动相关的参，如果是滑动到边缘就释放边界动画，并且需要再绘制
                         needsInvalidate = resetTouch();
                         break;
                     }
@@ -2666,17 +2677,24 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     if (DEBUG) {
                         Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
                     }
+                    //如果滑动的斜率小于1
                     if (xDiff > mTouchSlop && xDiff > yDiff) {
                         if (DEBUG) Log.v(TAG, "Starting drag!");
+                        //开始滑动了
                         mIsBeingDragged = true;
+                        //请求父布局不再拦截触摸事件
                         requestParentDisallowInterceptTouchEvent(true);
+                        //最新x坐标设置为初始值加减mTouchSlop这个裕量，保证达到滑动的条件
                         mLastMotionX = x - mInitialMotionX > 0 ? mInitialMotionX + mTouchSlop :
                                 mInitialMotionX - mTouchSlop;
                         mLastMotionY = y;
+                        //设置滑动的状态为：正在拖拽
                         setScrollState(SCROLL_STATE_DRAGGING);
+                        //打开draw的缓存，这个一直是关闭的
                         setScrollingCacheEnabled(true);
 
                         // Disallow Parent Intercept, just in case
+                        //关闭父布局的触摸拦截
                         ViewParent parent = getParent();
                         if (parent != null) {
                             parent.requestDisallowInterceptTouchEvent(true);
@@ -2684,6 +2702,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     }
                 }
                 // Not else! Note that mIsBeingDragged can be set above.
+                // 当前正在滑动，执行滑动
                 if (mIsBeingDragged) {
                     // Scroll to follow the motion event
                     final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
@@ -3014,6 +3033,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * control the snapping motion and fling behavior. (e.g. parallax-scrolling tabs.)
      * Call {@link #fakeDragBy(float)} to simulate the actual drag motion. Call
      * {@link #endFakeDrag()} to complete the fake drag and fling as necessary.
+     * 模拟一个手指滑动，例如点击Tab后ViewPager会滑动到相应的位置
      * <p>
      * <p>During a fake drag the ViewPager will ignore all touch events. If a real drag
      * is already in progress, this method will return false.
