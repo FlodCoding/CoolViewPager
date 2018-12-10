@@ -77,7 +77,7 @@ import java.util.List;
 @Keep
 public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private static final String TAG = "ViewPager";
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     private static final boolean USE_CACHE = false;
 
@@ -109,7 +109,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         boolean scrolling;
         //页面宽度，取值为0到1，表示为页面宽度与ViewPager显示区域宽度比例，默认为1
         float widthFactor;
-        //偏移量，页面移动的偏移量，默认是0
+        //偏移量，页面移动的偏移量，默认是0,用来乘页面面的宽度，可以算出实际的偏移量
         float offset;
     }
 
@@ -2476,7 +2476,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 mIsUnableToDrag = false;
                 //标记开始滚动
                 mIsScrollStarted = true;
-                //手动调用计算滑动的偏移量
+                //手动调用计算滑动的偏移量,如果目前滑动已经结束了，会直接返回，不会计算
                 mScroller.computeScrollOffset();
 
                 //如果此时按下，且页面正在放到最终位置
@@ -2495,6 +2495,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     //设置滑动状态为滑动中
                     setScrollState(SCROLL_STATE_DRAGGING);
                 } else {
+                    //当前按下无论如何需要先停止滑动
                     //结束滚动
                     completeScroll(false);
                     mIsBeingDragged = false;
@@ -2666,7 +2667,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     if (pointerIndex == -1) {
                         // A child has consumed some touch events and put us into an inconsistent
                         // state.
-                        //重置一些与滑动相关的参，如果是滑动到边缘就释放边界动画，并且需要再绘制
+                        //重置一些与滑动相关的参数，如果是滑动到边缘就释放边界动画，并且需要再绘制
                         needsInvalidate = resetTouch();
                         break;
                     }
@@ -2710,14 +2711,21 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     needsInvalidate |= performDrag(x);
                 }
                 break;
+            //手指抬起
             case MotionEvent.ACTION_UP:
+                //必须是正在拖动的状态
                 if (mIsBeingDragged) {
+                    //手指速度
                     final VelocityTracker velocityTracker = mVelocityTracker;
+                    //计算手指的速度，这样可以拿到速度的x或y值
                     velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                    //拿到x的速度
                     int initialVelocity = (int) velocityTracker.getXVelocity(mActivePointerId);
                     mPopulatePending = true;
+                    // 获得当前视图的实际宽度和滑动到x的终点值
                     final int width = getClientWidth();
                     final int scrollX = getScrollX();
+                    //拿到当前的ItemInfo
                     final CoolViewPager.ItemInfo ii = infoForCurrentScrollPosition();
                     final float marginOffset = (float) mPageMargin / width;
                     final int currentPage = ii.position;
@@ -2726,8 +2734,10 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
                     final float x = ev.getX(activePointerIndex);
                     final int totalDelta = (int) (x - mInitialMotionX);
+                    //算出下一个页面应该是哪个？
                     int nextPage = determineTargetPage(currentPage, pageOffset, initialVelocity,
                             totalDelta);
+                    //设置到当前页面
                     setCurrentItemInternal(nextPage, true, true, initialVelocity);
 
                     needsInvalidate = resetTouch();
@@ -2739,6 +2749,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     needsInvalidate = resetTouch();
                 }
                 break;
+            //手指按下，记录坐标和当前活动的手指Id
             case MotionEvent.ACTION_POINTER_DOWN: {
                 final int index = ev.getActionIndex();
                 final float x = ev.getX(index);
@@ -2782,39 +2793,42 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     private boolean performDrag(float x) {
         boolean needsInvalidate = false;
-
+        //拿到拖动的偏移量
         final float deltaX = mLastMotionX - x;
+        //更新最新的x坐标
         mLastMotionX = x;
 
+        //将旧的滑动目标X加上偏移，就是新的滑动目标
         float oldScrollX = getScrollX();
         float scrollX = oldScrollX + deltaX;
         final int width = getClientWidth();
 
-        float leftBound = width * mFirstOffset;
-        float rightBound = width * mLastOffset;
-        boolean leftAbsolute = true;
-        boolean rightAbsolute = true;
-
+        float leftBound = width * mFirstOffset;//页面卷左测距离原点的距离
+        float rightBound = width * mLastOffset;//页面卷右侧距离原点的距离
+        boolean leftAbsolute = true;//是否到达左侧边界
+        boolean rightAbsolute = true;//是否到达右侧边界
+        //拿到页卷的首个和最后一个
         final CoolViewPager.ItemInfo firstItem = mItems.get(0);
         final CoolViewPager.ItemInfo lastItem = mItems.get(mItems.size() - 1);
+        //如果页卷还没有到达左边界，那需要算出页卷的左侧距离原点的距离；
         if (firstItem.position != 0) {
             leftAbsolute = false;
             leftBound = firstItem.offset * width;
         }
+        //页卷右侧同理
         if (lastItem.position != mAdapter.getCount() - 1) {
             rightAbsolute = false;
             rightBound = lastItem.offset * width;
         }
 
+        //如果滑动到达边界，那需要执行边界禁止滑动效果
         if (scrollX < leftBound) {
             if (leftAbsolute) {
                 float over = leftBound - scrollX;
                 if (mScrollMode == ScrollMode.VERTICAL) {
                     mTopEdge.onPull(Math.abs(over) / width);
-//                    Log.e("Jet","mTopEdge.onPull");
                 } else {
                     mLeftEdge.onPull(Math.abs(over) / width);
-//                    Log.e("Jet","mLeftEdge.onPull");
                 }
                 needsInvalidate = true;
             }
@@ -2824,17 +2838,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 float over = scrollX - rightBound;
                 if (mScrollMode == ScrollMode.VERTICAL) {
                     mBottomEdge.onPull(Math.abs(over) / width);
-//                    Log.e("Jet","mBottomEdge.onPull");
                 } else {
                     mRightEdge.onPull(Math.abs(over) / width);
-//                    Log.e("Jet","mRightEdge.onPull");
                 }
                 needsInvalidate = true;
             }
             scrollX = rightBound;
         }
         // Don't lose the rounded component
+        //把scrollX小数加到mLastMotionX 不清楚这么做的意义
         mLastMotionX += scrollX - (int) scrollX;
+        //执行滑动
         scrollTo((int) scrollX, getScrollY());
         pageScrolled((int) scrollX);
 
