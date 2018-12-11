@@ -1,4 +1,20 @@
-package com.huanhailiuxin.coolviewpager;
+package com.example.hardviewpager;
+
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -12,18 +28,13 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.SystemClock;
 import android.support.annotation.CallSuper;
-import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
-import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.AbsSavedState;
 import android.support.v4.view.AccessibilityDelegateCompat;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.PagerTitleStrip;
 import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewPager;
 import android.support.v4.view.WindowInsetsCompat;
 import android.support.v4.view.accessibility.AccessibilityEventCompat;
 import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
@@ -44,10 +55,6 @@ import android.view.animation.Interpolator;
 import android.widget.EdgeEffect;
 import android.widget.Scroller;
 
-import com.huanhailiuxin.coolviewpager.adapter.LoopPagerAdapterWrapper;
-import com.huanhailiuxin.coolviewpager.adapter.PagerAdapterWrapper;
-import com.huanhailiuxin.coolviewpager.transformer.DefaultVerticalTransformer;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -58,26 +65,48 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+
 /**
- * 作者:幻海流心
- * GitHub:https://github.com/HuanHaiLiuXin
- * 邮箱:wall0920@163.com
- * 2018/1/17 12:08
+ * Layout manager that allows the user to flip left and right
+ * through pages of data.  You supply an implementation of a
+ * {@link PagerAdapter} to generate the pages that the view shows.
  *
- * <p>
- * 拷贝自{@link android.support.v4.view.ViewPager},通过修改少量代码实现如下扩展功能:
- * 1:横向、纵向滚动
- * 2:循环滚动
- * 3:自动滚动并设置滚动方向
- * 4:横向、纵向滚动并设置边缘效果颜色
- * 5:通过调用{@link CoolViewPager#notifyDataSetChanged()}实时刷新界面
- * <p>
- * 一屏展示多页:{@link PagerAdapter#getPageWidth(int)}
+ * <p>ViewPager is most often used in conjunction with {@link android.app.Fragment},
+ * which is a convenient way to supply and manage the lifecycle of each page.
+ * There are standard adapters implemented for using fragments with the ViewPager,
+ * which cover the most common use cases.  These are
+ * {@link android.support.v4.app.FragmentPagerAdapter} and
+ * {@link android.support.v4.app.FragmentStatePagerAdapter}; each of these
+ * classes have simple code showing how to build a full user interface
+ * with them.
+ *
+ * <p>Views which are annotated with the {@link DecorView} annotation are treated as
+ * part of the view pagers 'decor'. Each decor view's position can be controlled via
+ * its {@code android:layout_gravity} attribute. For example:
+ *
+ * <pre>
+ * &lt;android.support.v4.view.ViewPager
+ *     android:layout_width=&quot;match_parent&quot;
+ *     android:layout_height=&quot;match_parent&quot;&gt;
+ *
+ *     &lt;android.support.v4.view.PagerTitleStrip
+ *         android:layout_width=&quot;match_parent&quot;
+ *         android:layout_height=&quot;wrap_content&quot;
+ *         android:layout_gravity=&quot;top&quot; /&gt;
+ *
+ * &lt;/android.support.v4.view.ViewPager&gt;
+ * </pre>
+ *
+ * <p>For more information about how to use ViewPager, read <a
+ * href="{@docRoot}training/implementing-navigation/lateral.html">Creating Swipe Views with
+ * Tabs</a>.</p>
+ *
+ * <p>You can find examples of using ViewPager in the API 4+ Support Demos and API 13+ Support Demos
+ * sample code.
  */
-@Keep
-public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
+public class ViewPager extends ViewGroup {
     private static final String TAG = "ViewPager";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private static final boolean USE_CACHE = false;
 
@@ -89,7 +118,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     private static final int MIN_FLING_VELOCITY = 400; // dips
 
-    static final int[] LAYOUT_ATTRS = new int[]{
+    static final int[] LAYOUT_ATTRS = new int[] {
             android.R.attr.layout_gravity
     };
 
@@ -97,7 +126,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * Used to track what the expected number of items in the adapter should be.
      * If the app changes this when we don't expect it, we'll throw a big obnoxious exception.
      */
-    //自己认为Adapter数据个数，在setAdapter(),还有dataSetChanged 会更新它的值
     private int mExpectedAdapterCount;
 
     static class ItemInfo {
@@ -114,9 +142,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     }
 
     //页面排序，倒序
-    private static final Comparator<ItemInfo> COMPARATOR = new Comparator<ItemInfo>() {
+    private static final Comparator<ItemInfo> COMPARATOR = new Comparator<ItemInfo>(){
         @Override
-        public int compare(CoolViewPager.ItemInfo lhs, CoolViewPager.ItemInfo rhs) {
+        public int compare(ItemInfo lhs, ItemInfo rhs) {
             return lhs.position - rhs.position;
         }
     };
@@ -132,7 +160,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     //已经缓存的页面，这个数量由 mOffscreenPageLimit来决定的
     private final ArrayList<ItemInfo> mItems = new ArrayList<ItemInfo>();
-    private final CoolViewPager.ItemInfo mTempItem = new CoolViewPager.ItemInfo();
+    private final ItemInfo mTempItem = new ItemInfo();
 
     private final Rect mTempRect = new Rect();
 
@@ -145,7 +173,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private Scroller mScroller;
     private boolean mIsScrollStarted;
 
-    private CoolViewPager.PagerObserver mObserver;
+    private PagerObserver mObserver;
 
     private int mPageMargin;
     private Drawable mMarginDrawable;
@@ -155,7 +183,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     // Offsets of the first and last items, if known.
     // Set during population, used to determine if we are at the beginning
     // or end of the pager data set during touch scrolling.
-    //第一个和最后一个滑动的偏移量
+    //第一个和最后一个滑动的偏移量,默认是最大值
     private float mFirstOffset = -Float.MAX_VALUE;
     private float mLastOffset = Float.MAX_VALUE;
 
@@ -194,7 +222,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Determines speed during touch scrolling
      */
-    //追踪滑动时的手指滑动速度
     private VelocityTracker mVelocityTracker;
     private int mMinimumVelocity;//最小滑动速度 px
     private int mMaximumVelocity;//最大滑动速度 px （在FLING状态下）
@@ -206,14 +233,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     // "catching" the flinging pager.
     private static final int CLOSE_ENOUGH = 2; // dp
 
-    private boolean mFakeDragging; //正在进行假拖动
+    private boolean mFakeDragging;//正在进行假拖动
     private long mFakeDragBeginTime;
 
+    //边缘效果
     private EdgeEffect mLeftEdge;
     private EdgeEffect mRightEdge;
-    //添加顶部及底部的边缘效果
-    private EdgeEffect mTopEdge;
-    private EdgeEffect mBottomEdge;
 
     private boolean mFirstLayout = true;
     private boolean mNeedCalculatePageOffsets = false;
@@ -221,10 +246,10 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private int mDecorChildCount;
 
     private List<OnPageChangeListener> mOnPageChangeListeners;
-    private CoolViewPager.OnPageChangeListener mOnPageChangeListener;
-    private CoolViewPager.OnPageChangeListener mInternalPageChangeListener;
+    private OnPageChangeListener mOnPageChangeListener;
+    private OnPageChangeListener mInternalPageChangeListener;
     private List<OnAdapterChangeListener> mAdapterChangeListeners;
-    private ViewPager.PageTransformer mPageTransformer;
+    private PageTransformer mPageTransformer;
     private int mPageTransformerLayerType;
 
     private static final int DRAW_ORDER_DEFAULT = 0;
@@ -232,13 +257,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     private static final int DRAW_ORDER_REVERSE = 2;
     private int mDrawingOrder;
     private ArrayList<View> mDrawingOrderedChildren;
-    private static final CoolViewPager.ViewPositionComparator sPositionComparator = new CoolViewPager.ViewPositionComparator();
+    private static final ViewPositionComparator sPositionComparator = new ViewPositionComparator();
 
     /**
      * Indicates that the pager is in an idle, settled state. The current page
      * is fully in view and no animation is in progress.
      */
-    public static final int SCROLL_STATE_IDLE = 0;     //空闲
+    public static final int SCROLL_STATE_IDLE = 0;       //空闲状态
 
     /**
      * Indicates that the pager is currently being dragged by the user.
@@ -248,7 +273,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Indicates that the pager is in the process of settling to a final position.
      */
-    public static final int SCROLL_STATE_SETTLING = 2;  //正在滑动到最终位置（手指释放了）
+    public static final int SCROLL_STATE_SETTLING = 2; //正在滑动到最终位置（手指释放了）
 
     private final Runnable mEndScrollRunnable = new Runnable() {
         @Override
@@ -269,9 +294,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
          * This method will be invoked when the current page is scrolled, either as part
          * of a programmatically initiated smooth scroll or a user initiated touch scroll.
          *
-         * @param position             Position index of the first page currently being displayed.
-         *                             Page position+1 will be visible if positionOffset is nonzero.
-         * @param positionOffset       Value from [0, 1) indicating the offset from the page at position.
+         * @param position Position index of the first page currently being displayed.
+         *                 Page position+1 will be visible if positionOffset is nonzero.
+         * @param positionOffset Value from [0, 1) indicating the offset from the page at position.
          * @param positionOffsetPixels Value in pixels indicating the offset from position.
          */
         void onPageScrolled(int position, float positionOffset, int positionOffsetPixels);
@@ -290,19 +315,19 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
          * or when it is fully stopped/idle.
          *
          * @param state The new scroll state.
-         * @see CoolViewPager#SCROLL_STATE_IDLE
-         * @see CoolViewPager#SCROLL_STATE_DRAGGING
-         * @see CoolViewPager#SCROLL_STATE_SETTLING
+         * @see ViewPager#SCROLL_STATE_IDLE
+         * @see ViewPager#SCROLL_STATE_DRAGGING
+         * @see ViewPager#SCROLL_STATE_SETTLING
          */
         void onPageScrollStateChanged(int state);
     }
 
     /**
-     * Simple implementation of the {@link CoolViewPager.OnPageChangeListener} interface with stub
+     * Simple implementation of the {@link OnPageChangeListener} interface with stub
      * implementations of each method. Extend this if you do not intend to override
-     * every method of {@link CoolViewPager.OnPageChangeListener}.
+     * every method of {@link OnPageChangeListener}.
      */
-    public static class SimpleOnPageChangeListener implements CoolViewPager.OnPageChangeListener {
+    public static class SimpleOnPageChangeListener implements OnPageChangeListener {
         @Override
         public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
             // This space for rent
@@ -323,22 +348,22 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * A PageTransformer is invoked whenever a visible/attached page is scrolled.
      * This offers an opportunity for the application to apply a custom transformation
      * to the page views using animation properties.
-     * <p>
+     *
      * <p>As property animation is only supported as of Android 3.0 and forward,
      * setting a PageTransformer on a ViewPager on earlier platform versions will
      * be ignored.</p>
      */
-//    public interface PageTransformer {
-    /**
-     * Apply a property transformation to the given page.
-     *
-     * @param page     Apply the transformation to this page
-     * @param position Position of page relative to the current front-and-center
-     *                 position of the pager. 0 is front and center. 1 is one full
-     *                 page position to the right, and -1 is one page position to the left.
-     */
-//        void transformPage(@NonNull View page, float position);
-//    }
+    public interface PageTransformer {
+        /**
+         * Apply a property transformation to the given page.
+         *
+         * @param page Apply the transformation to this page
+         * @param position Position of page relative to the current front-and-center
+         *                 position of the pager. 0 is front and center. 1 is one full
+         *                 page position to the right, and -1 is one page position to the left.
+         */
+        void transformPage(@NonNull View page, float position);
+    }
 
     /**
      * Callback interface for responding to adapter changes.
@@ -351,19 +376,19 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
          * @param oldAdapter the previously set adapter
          * @param newAdapter the newly set adapter
          */
-        void onAdapterChanged(@NonNull CoolViewPager viewPager,
+        void onAdapterChanged(@NonNull ViewPager viewPager,
                               @Nullable PagerAdapter oldAdapter, @Nullable PagerAdapter newAdapter);
     }
 
     /**
      * Annotation which allows marking of views to be decoration views when added to a view
      * pager.
-     * <p>
+     *
      * <p>Views marked with this annotation can be added to the view pager with a layout resource.
-     * An example being {@link PagerTitleStrip}.</p>
-     * <p>
+     *.</p>
+     *
      * <p>You can also control whether a view is a decor view but setting
-     * {@link CoolViewPager.LayoutParams#isDecor} on the child's layout params.</p>
+     * {@link LayoutParams#isDecor} on the child's layout params.</p>
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -371,270 +396,14 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     public @interface DecorView {
     }
 
-    public CoolViewPager(@NonNull Context context) {
-        this(context, null);
+    public ViewPager(@NonNull Context context) {
+        super(context);
+        initViewPager();
     }
 
-    public CoolViewPager(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public ViewPager(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         initViewPager();
-        initAttr(context, attrs);
-    }
-
-    /**
-     * 滑动方向枚举类
-     */
-    public enum ScrollMode {
-        HORIZONTAL(0), VERTICAL(1);
-        int id;
-
-        ScrollMode(int id) {
-            this.id = id;
-        }
-
-        static ScrollMode getScrollMode(int id) {
-            for (ScrollMode scrollMode : values()) {
-                if (scrollMode.id == id)
-                    return scrollMode;
-            }
-            throw new IllegalArgumentException();
-        }
-    }
-
-    /**
-     * 自动滚动方向枚举类
-     */
-    public enum AutoScrollDirection {
-        FORWARD(0), BACKWARD(1);
-        int id;
-
-        AutoScrollDirection(int id) {
-            this.id = id;
-        }
-
-        static AutoScrollDirection getAutoScrollDirection(int id) {
-            for (AutoScrollDirection autoScrollDirection : values()) {
-                if (autoScrollDirection.id == id) {
-                    return autoScrollDirection;
-                }
-            }
-            throw new IllegalArgumentException();
-        }
-    }
-
-    private TimerHandler.TimerHandlerListener mTimerHandlerListener = new TimerHandler.TimerHandlerListener() {
-        @Override
-        public void callBack() {
-            autoScrollNextPage();
-        }
-    };
-    private ScrollMode mScrollMode = ScrollMode.HORIZONTAL;
-    private boolean mAutoScroll = false;
-    private int mIntervalInMillis = 2000;
-    private AutoScrollDirection mAutoScrollDirection = AutoScrollDirection.FORWARD;
-    private TimerHandler timer;
-    private boolean mInfiniteLoop = false;
-    private int mScrollDuration = 0;
-    private boolean mDrawEdgeEffect = true;
-    private @ColorInt
-    int mEdgeEffectColor = -Integer.MAX_VALUE;
-
-    @Override
-    public void setScrollMode(ScrollMode scrollMode) {
-        this.mScrollMode = scrollMode;
-        if (this.mScrollMode == ScrollMode.HORIZONTAL) {
-            this.mPageTransformer = null;
-            this.mOnPageChangeListeners = new ArrayList<>();
-            this.mOnPageChangeListener = null;
-        } else {
-            setPageTransformer(false, new DefaultVerticalTransformer());
-            this.mOnPageChangeListeners = new ArrayList<>();
-            this.mOnPageChangeListener = null;
-        }
-    }
-
-    @Override
-    public void setAutoScroll(boolean autoScroll, int... intervalInMillis) {
-        this.mAutoScroll = autoScroll;
-        if (intervalInMillis.length > 0 && intervalInMillis[0] > 0) {
-            this.mIntervalInMillis = intervalInMillis[0];
-        }
-        if (!this.mAutoScroll) {
-            stopTimer();
-            timer = null;
-        } else {
-            timer = new TimerHandler(this, mTimerHandlerListener, this.mIntervalInMillis);
-            checkAndStartTimer();
-        }
-    }
-
-    public boolean isAutoScroll() {
-        return this.mAutoScroll;
-    }
-
-    public void toggleAutoScroll() {
-        this.mAutoScroll = !this.mAutoScroll;
-        setAutoScroll(this.mAutoScroll);
-    }
-
-    public int getIntervalInMillis() {
-        return this.mIntervalInMillis;
-    }
-
-    @Override
-    public void setAutoScrollDirection(AutoScrollDirection autoScrollDirection) {
-        this.mAutoScrollDirection = autoScrollDirection;
-    }
-
-    public AutoScrollDirection getAutoScrollDirection() {
-        return this.mAutoScrollDirection;
-    }
-
-    public void toggleAutoScrollDirection() {
-        if (this.mAutoScrollDirection == AutoScrollDirection.FORWARD) {
-            this.mAutoScrollDirection = AutoScrollDirection.BACKWARD;
-        } else {
-            this.mAutoScrollDirection = AutoScrollDirection.FORWARD;
-        }
-    }
-
-    @Override
-    public void autoScrollNextPage() {
-        if (this.mAutoScroll && this.mAdapter != null && this.mAdapter.getCount() > 1) {
-            int nextItem = getAutoScrollNextItem();
-            setCurrentItem(nextItem, true);
-        }
-    }
-
-    @Override
-    public void setInfiniteLoop(boolean infiniteLoop) {
-        if (this.mInfiniteLoop != infiniteLoop) {
-            this.mInfiniteLoop = infiniteLoop;
-            if (this.mAdapter != null) {
-                if (this.mInfiniteLoop && !(this.mAdapter instanceof LoopPagerAdapterWrapper)) {
-                    //对于原生PagerAdapter实例,如果Item数量<=1,则不应该让其循环滚动
-                    if (this.mAdapter.getCount() > 1) {
-                        setAdapter(this.mAdapter);
-                    } else {
-                        this.mInfiniteLoop = false;
-                    }
-                } else if (!this.mInfiniteLoop && this.mAdapter instanceof LoopPagerAdapterWrapper) {
-                    setAdapter(((LoopPagerAdapterWrapper) this.mAdapter).getRealAdapter());
-                }
-            }
-        }
-    }
-
-    public boolean isInfiniteLoop() {
-        return this.mInfiniteLoop;
-    }
-
-    @Override
-    public void setScrollDuration(boolean ifSetScrollDuration, int... scrollDuration) {
-        if ((!ifSetScrollDuration) || scrollDuration == null || scrollDuration.length <= 0 || scrollDuration[0] <= 0) {
-            this.mScrollDuration = 0;
-        } else {
-            this.mScrollDuration = scrollDuration[0];
-        }
-    }
-
-    public int getScrollDuration() {
-        return this.mScrollDuration;
-    }
-
-    public boolean isScrollDuration() {
-        return this.mScrollDuration > 0;
-    }
-
-    @Override
-    public void setDrawEdgeEffect(boolean drawEdgeEffect) {
-        this.mDrawEdgeEffect = drawEdgeEffect;
-    }
-
-    @Override
-    public void setEdgeEffectColor(@ColorInt int color) {
-        this.mEdgeEffectColor = color;
-        ReflectionUtils.invoke(mLeftEdge, "setColor", new Class[]{int.class}, new Object[]{color});
-        ReflectionUtils.invoke(mTopEdge, "setColor", new Class[]{int.class}, new Object[]{color});
-        ReflectionUtils.invoke(mRightEdge, "setColor", new Class[]{int.class}, new Object[]{color});
-        ReflectionUtils.invoke(mBottomEdge, "setColor", new Class[]{int.class}, new Object[]{color});
-    }
-
-    /**
-     * 如果设置了Adapter,且Adapter中项数大于1,且开启了自动滚动,开启循环滚动
-     */
-    private void checkAndStartTimer() {
-        if (this.mAdapter != null && this.mAdapter.getCount() > 1 && this.mAutoScroll) {
-            startTimer();
-        }
-    }
-
-    private void startTimer() {
-        if (timer == null || !timer.isStopped) {
-            return;
-        }
-        timer.listener = mTimerHandlerListener;
-        timer.removeCallbacksAndMessages(null);
-        timer.tick();
-        timer.isStopped = false;
-    }
-
-    private void stopTimer() {
-        if (timer == null || timer.isStopped) {
-            return;
-        }
-        timer.removeCallbacksAndMessages(null);
-        timer.listener = null;
-        timer.isStopped = true;
-    }
-
-    /**
-     * 获取在自动滚动开启情况下,当前实例要展示的下一页的索引值
-     *
-     * @return
-     */
-    private int getAutoScrollNextItem() {
-        int nextItem = 0;
-        if (mAutoScrollDirection == AutoScrollDirection.FORWARD) {
-            nextItem = mCurItem + 1;
-        } else {
-            nextItem = mCurItem - 1;
-        }
-        if (nextItem > this.mAdapter.getCount() - 1) {
-            nextItem = 0;
-        } else if (nextItem < 0) {
-            nextItem = this.mAdapter.getCount() - 1;
-        }
-        return nextItem;
-    }
-
-    ;
-
-    /**
-     * 初始化自定义属性
-     *
-     * @param context
-     * @param attrs
-     */
-    private void initAttr(@NonNull Context context, @Nullable AttributeSet attrs) {
-        if (attrs != null) {
-            TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.CoolViewPager);
-            mScrollMode = ScrollMode.getScrollMode(ta.getInt(R.styleable.CoolViewPager_cvp_scrollmode, 0));
-            mAutoScroll = ta.getBoolean(R.styleable.CoolViewPager_cvp_autoscroll, mAutoScroll);
-            mIntervalInMillis = ta.getInteger(R.styleable.CoolViewPager_cvp_intervalinmillis, mIntervalInMillis);
-            mAutoScrollDirection = AutoScrollDirection.getAutoScrollDirection(ta.getInt(R.styleable.CoolViewPager_cvp_autoscrolldirection, 0));
-            mInfiniteLoop = ta.getBoolean(R.styleable.CoolViewPager_cvp_infiniteloop, mInfiniteLoop);
-            mScrollDuration = ta.getInteger(R.styleable.CoolViewPager_cvp_scrollduration, mScrollDuration);
-            mDrawEdgeEffect = ta.getBoolean(R.styleable.CoolViewPager_cvp_drawedgeeffect, mDrawEdgeEffect);
-            mEdgeEffectColor = ta.getColor(R.styleable.CoolViewPager_cvp_edgeeffectcolor, mEdgeEffectColor);
-            ta.recycle();
-        }
-        setScrollMode(mScrollMode);
-        setAutoScroll(mAutoScroll, mIntervalInMillis);
-        setAutoScrollDirection(mAutoScrollDirection);
-        if (mDrawEdgeEffect && mEdgeEffectColor != -Integer.MAX_VALUE) {
-            setEdgeEffectColor(mEdgeEffectColor);
-        }
     }
 
     void initViewPager() {
@@ -656,15 +425,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         //左右边的边缘效果
         mLeftEdge = new EdgeEffect(context);
         mRightEdge = new EdgeEffect(context);
-        //添加顶部及底部的边缘效果
-        mTopEdge = new EdgeEffect(context);
-        mBottomEdge = new EdgeEffect(context);
 
         mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
         mCloseEnough = (int) (CLOSE_ENOUGH * density);
         mDefaultGutterSize = (int) (DEFAULT_GUTTER_SIZE * density);
 
-        ViewCompat.setAccessibilityDelegate(this, new CoolViewPager.MyAccessibilityDelegate());
+        ViewCompat.setAccessibilityDelegate(this, new MyAccessibilityDelegate());
 
         if (ViewCompat.getImportantForAccessibility(this)
                 == ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
@@ -722,6 +488,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 });
     }
 
+    @Override
+    protected void onDetachedFromWindow() {
+        removeCallbacks(mEndScrollRunnable);
+        // To be on the safe side, abort the scroller
+        if ((mScroller != null) && !mScroller.isFinished()) {
+            mScroller.abortAnimation();
+        }
+        super.onDetachedFromWindow();
+    }
 
     void setScrollState(int newState) {
         if (mScrollState == newState) {
@@ -742,48 +517,31 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * @param adapter Adapter to use
      */
     public void setAdapter(@Nullable PagerAdapter adapter) {
-        //设置Adapter前先停止自动滚动
-        stopTimer();
         if (mAdapter != null) {
-            //mAdapter.setViewPagerObserver(null);
-            //setViewPagerObserver不是public方法,package外不能调用,使用反射调用
-            ReflectionUtils.invoke(mAdapter, "setViewPagerObserver", new Class[]{DataSetObserver.class}, new Object[]{null});
+            mAdapter.setViewPagerObserver(null);
             mAdapter.startUpdate(this);
             for (int i = 0; i < mItems.size(); i++) {
-                final CoolViewPager.ItemInfo ii = mItems.get(i);
+                final ItemInfo ii = mItems.get(i);
                 mAdapter.destroyItem(this, ii.position, ii.object);
             }
             mAdapter.finishUpdate(this);
             mItems.clear();
-            //将页面的Views移除
             removeNonDecorViews();
             mCurItem = 0;
             scrollTo(0, 0);
         }
 
         final PagerAdapter oldAdapter = mAdapter;
-        //对于原生PagerAdapter实例,如果Item数量<=1,则不应该让其循环滚动
-        if (mInfiniteLoop && adapter.getCount() > 1) {
-            mAdapter = new LoopPagerAdapterWrapper(adapter);
-            setOnPageChangeListener(onPageChangeListener);
-        } else {
-            mInfiniteLoop = false;
-//            mAdapter = adapter;
-            mAdapter = new PagerAdapterWrapper(adapter);
-            setOnPageChangeListener(null);
-        }
+        mAdapter = adapter;
         mExpectedAdapterCount = 0;
 
         if (mAdapter != null) {
             if (mObserver == null) {
-                mObserver = new CoolViewPager.PagerObserver();
+                mObserver = new PagerObserver();
             }
-//            mAdapter.setViewPagerObserver(mObserver);
-            ReflectionUtils.invoke(mAdapter, "setViewPagerObserver", new Class[]{DataSetObserver.class}, new PagerObserver[]{mObserver});
+            mAdapter.setViewPagerObserver(mObserver);
             mPopulatePending = false;
-            //保存上一次是否是第一次layout
             final boolean wasFirstLayout = mFirstLayout;
-            //设定当前是第一次layout
             mFirstLayout = true;
             mExpectedAdapterCount = mAdapter.getCount();
             if (mRestoredCurItem >= 0) {
@@ -793,7 +551,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 mRestoredAdapterState = null;
                 mRestoredClassLoader = null;
             } else if (!wasFirstLayout) {
-                //之前不是第一次Layout 还存在旧的视图需要销毁,然后再创建新的
                 populate();
             } else {
                 requestLayout();
@@ -803,20 +560,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         // Dispatch the change to any listeners
         if (mAdapterChangeListeners != null && !mAdapterChangeListeners.isEmpty()) {
             for (int i = 0, count = mAdapterChangeListeners.size(); i < count; i++) {
-                mAdapterChangeListeners.get(i).onAdapterChanged(CoolViewPager.this, oldAdapter, adapter);
+                mAdapterChangeListeners.get(i).onAdapterChanged(this, oldAdapter, adapter);
             }
         }
-        if (mInfiniteLoop) {
-            int realItem = ((LoopPagerAdapterWrapper) mAdapter).toInnerPosition(0);
-            setCurrentItem(realItem, false);
-        }
-        checkAndStartTimer();
     }
 
     private void removeNonDecorViews() {
         for (int i = 0; i < getChildCount(); i++) {
             final View child = getChildAt(i);
-            final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+            final LayoutParams lp = (LayoutParams) child.getLayoutParams();
             if (!lp.isDecor) {
                 removeViewAt(i);
                 i--;
@@ -831,34 +583,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      */
     @Nullable
     public PagerAdapter getAdapter() {
-//        return mAdapter instanceof LoopPagerAdapterWrapper ? ((LoopPagerAdapterWrapper)mAdapter).getRealAdapter() : mAdapter;
         return mAdapter;
-    }
-
-    public void notifyDataSetChanged() {
-        if (this.mAdapter != null) {
-            //notifyDataSetChanged前先停止自动滚动
-            stopTimer();
-            mAdapter.notifyDataSetChanged();
-            checkAndStartTimer();
-        }
-    }
-
-    /**
-     * 获取当前CoolViewPager实例选中的页面,其在用户提供的原始Adapter中的实际位置,
-     * 在例如需要变更PageIndicator的情况下会用到
-     *
-     * @return
-     */
-    public int getRealCurrentItem() {
-        int realCurrentItem = 0;
-        if (this.mAdapter == null) {
-        } else if (this.mAdapter instanceof PagerAdapterWrapper) {
-            realCurrentItem = mCurItem;
-        } else {
-            realCurrentItem = ((LoopPagerAdapterWrapper) this.mAdapter).toRealPosition(mCurItem);
-        }
-        return realCurrentItem;
     }
 
     /**
@@ -866,7 +591,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      *
      * @param listener listener to add
      */
-    public void addOnAdapterChangeListener(@NonNull CoolViewPager.OnAdapterChangeListener listener) {
+    public void addOnAdapterChangeListener(@NonNull OnAdapterChangeListener listener) {
         if (mAdapterChangeListeners == null) {
             mAdapterChangeListeners = new ArrayList<>();
         }
@@ -875,11 +600,11 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Remove a listener that was previously added via
-     * {@link #addOnAdapterChangeListener(CoolViewPager.OnAdapterChangeListener)}.
+     * {@link #addOnAdapterChangeListener(OnAdapterChangeListener)}.
      *
      * @param listener listener to remove
      */
-    public void removeOnAdapterChangeListener(@NonNull CoolViewPager.OnAdapterChangeListener listener) {
+    public void removeOnAdapterChangeListener(@NonNull OnAdapterChangeListener listener) {
         if (mAdapterChangeListeners != null) {
             mAdapterChangeListeners.remove(listener);
         }
@@ -904,7 +629,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Set the currently selected page.
      *
-     * @param item         Item index to select
+     * @param item Item index to select
      * @param smoothScroll True to smoothly scroll to the new item, false to transition immediately
      */
     public void setCurrentItem(int item, boolean smoothScroll) {
@@ -962,7 +687,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     private void scrollToItem(int item, boolean smoothScroll, int velocity,
                               boolean dispatchSelected) {
-        final CoolViewPager.ItemInfo curInfo = infoForPosition(item);
+        final ItemInfo curInfo = infoForPosition(item);
         int destX = 0;
         if (curInfo != null) {
             final int width = getClientWidth();
@@ -986,28 +711,29 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Set a listener that will be invoked whenever the page changes or is incrementally
-     * scrolled. See {@link CoolViewPager.OnPageChangeListener}.
+     * scrolled. See {@link OnPageChangeListener}.
      *
      * @param listener Listener to set
-     * @deprecated Use {@link #addOnPageChangeListener(CoolViewPager.OnPageChangeListener)}
-     * and {@link #removeOnPageChangeListener(CoolViewPager.OnPageChangeListener)} instead.
+     *
+     * @deprecated Use {@link #addOnPageChangeListener(OnPageChangeListener)}
+     * and {@link #removeOnPageChangeListener(OnPageChangeListener)} instead.
      */
     @Deprecated
-    public void setOnPageChangeListener(CoolViewPager.OnPageChangeListener listener) {
+    public void setOnPageChangeListener(OnPageChangeListener listener) {
         mOnPageChangeListener = listener;
     }
 
     /**
      * Add a listener that will be invoked whenever the page changes or is incrementally
-     * scrolled. See {@link CoolViewPager.OnPageChangeListener}.
-     * <p>
+     * scrolled. See {@link OnPageChangeListener}.
+     *
      * <p>Components that add a listener should take care to remove it when finished.
      * Other components that take ownership of a view may call {@link #clearOnPageChangeListeners()}
      * to remove all attached listeners.</p>
      *
      * @param listener listener to add
      */
-    public void addOnPageChangeListener(@NonNull CoolViewPager.OnPageChangeListener listener) {
+    public void addOnPageChangeListener(@NonNull OnPageChangeListener listener) {
         if (mOnPageChangeListeners == null) {
             mOnPageChangeListeners = new ArrayList<>();
         }
@@ -1016,11 +742,11 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Remove a listener that was previously added via
-     * {@link #addOnPageChangeListener(CoolViewPager.OnPageChangeListener)}.
+     * {@link #addOnPageChangeListener(OnPageChangeListener)}.
      *
      * @param listener listener to remove
      */
-    public void removeOnPageChangeListener(@NonNull CoolViewPager.OnPageChangeListener listener) {
+    public void removeOnPageChangeListener(@NonNull OnPageChangeListener listener) {
         if (mOnPageChangeListeners != null) {
             mOnPageChangeListeners.remove(listener);
         }
@@ -1036,42 +762,42 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     }
 
     /**
-     * Sets a {@link ViewPager.PageTransformer} that will be called for each attached page whenever
+     * Sets a {@link PageTransformer} that will be called for each attached page whenever
      * the scroll position is changed. This allows the application to apply custom property
      * transformations to each page, overriding the default sliding behavior.
-     * <p>
+     *
      * <p><em>Note:</em> By default, calling this method will cause contained pages to use
      * {@link View#LAYER_TYPE_HARDWARE}. This layer type allows custom alpha transformations,
      * but it will cause issues if any of your pages contain a {@link android.view.SurfaceView}
      * and you have not called {@link android.view.SurfaceView#setZOrderOnTop(boolean)} to put that
      * {@link android.view.SurfaceView} above your app content. To disable this behavior, call
-     * {@link #setPageTransformer(boolean, ViewPager.PageTransformer, int)} and pass
+     * {@link #setPageTransformer(boolean,PageTransformer,int)} and pass
      * {@link View#LAYER_TYPE_NONE} for {@code pageLayerType}.</p>
      *
      * @param reverseDrawingOrder true if the supplied PageTransformer requires page views
      *                            to be drawn from last to first instead of first to last.
-     * @param transformer         PageTransformer that will modify each page's animation properties
+     * @param transformer PageTransformer that will modify each page's animation properties
      */
     public void setPageTransformer(boolean reverseDrawingOrder,
-                                   @Nullable ViewPager.PageTransformer transformer) {
+                                   @Nullable PageTransformer transformer) {
         setPageTransformer(reverseDrawingOrder, transformer, View.LAYER_TYPE_HARDWARE);
     }
 
     /**
-     * Sets a {@link ViewPager.PageTransformer} that will be called for each attached page whenever
+     * Sets a {@link PageTransformer} that will be called for each attached page whenever
      * the scroll position is changed. This allows the application to apply custom property
      * transformations to each page, overriding the default sliding behavior.
      *
      * @param reverseDrawingOrder true if the supplied PageTransformer requires page views
      *                            to be drawn from last to first instead of first to last.
-     * @param transformer         PageTransformer that will modify each page's animation properties
-     * @param pageLayerType       View layer type that should be used for ViewPager pages. It should be
-     *                            either {@link View#LAYER_TYPE_HARDWARE},
-     *                            {@link View#LAYER_TYPE_SOFTWARE}, or
-     *                            {@link View#LAYER_TYPE_NONE}.
+     * @param transformer PageTransformer that will modify each page's animation properties
+     * @param pageLayerType View layer type that should be used for ViewPager pages. It should be
+     *                      either {@link View#LAYER_TYPE_HARDWARE},
+     *                      {@link View#LAYER_TYPE_SOFTWARE}, or
+     *                      {@link View#LAYER_TYPE_NONE}.
      */
     public void setPageTransformer(boolean reverseDrawingOrder,
-                                   @Nullable ViewPager.PageTransformer transformer, int pageLayerType) {
+                                   @Nullable PageTransformer transformer, int pageLayerType) {
         final boolean hasTransformer = transformer != null;
         final boolean needsPopulate = hasTransformer != (mPageTransformer != null);
         mPageTransformer = transformer;
@@ -1089,7 +815,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     protected int getChildDrawingOrder(int childCount, int i) {
         final int index = mDrawingOrder == DRAW_ORDER_REVERSE ? childCount - 1 - i : i;
         final int result =
-                ((CoolViewPager.LayoutParams) mDrawingOrderedChildren.get(index).getLayoutParams()).childIndex;
+                ((LayoutParams) mDrawingOrderedChildren.get(index).getLayoutParams()).childIndex;
         return result;
     }
 
@@ -1099,8 +825,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * @param listener Listener to set
      * @return The old listener that was set, if any.
      */
-    CoolViewPager.OnPageChangeListener setInternalPageChangeListener(CoolViewPager.OnPageChangeListener listener) {
-        CoolViewPager.OnPageChangeListener oldListener = mInternalPageChangeListener;
+    OnPageChangeListener setInternalPageChangeListener(OnPageChangeListener listener) {
+        OnPageChangeListener oldListener = mInternalPageChangeListener;
         mInternalPageChangeListener = listener;
         return oldListener;
     }
@@ -1120,14 +846,14 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * Set the number of pages that should be retained to either side of the
      * current page in the view hierarchy in an idle state. Pages beyond this
      * limit will be recreated from the adapter when needed.
-     * <p>
+     *
      * <p>This is offered as an optimization. If you know in advance the number
      * of pages you will need to support or have lazy-loading mechanisms in place
      * on your pages, tweaking this setting can have benefits in perceived smoothness
      * of paging animations and interaction. If you have a small number of pages (3-4)
      * that you can keep active all at once, less time will be spent in layout for
      * newly created view subtrees as the user pages back and forth.</p>
-     * <p>
+     *
      * <p>You should keep this limit low, especially if your pages have complex layouts.
      * This setting defaults to 1.</p>
      *
@@ -1230,8 +956,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     /**
      * Like {@link View#scrollBy}, but scroll smoothly instead of immediately.
      *
-     * @param x        the number of pixels to scroll by on the X axis
-     * @param y        the number of pixels to scroll by on the Y axis
+     * @param x the number of pixels to scroll by on the X axis
+     * @param y the number of pixels to scroll by on the Y axis
      * @param velocity the velocity associated with a fling, if applicable. (0 otherwise)
      */
     void smoothScrollTo(int x, int y, int velocity) {
@@ -1240,7 +966,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             setScrollingCacheEnabled(false);
             return;
         }
-        // startX
+
         int sx;
         boolean wasScrolling = (mScroller != null) && !mScroller.isFinished();
         if (wasScrolling) {
@@ -1270,6 +996,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         final int width = getClientWidth();
         final int halfWidth = width / 2;
+
         //滑动距离占宽度的比例
         final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dx) / width);
         //进行变速
@@ -1287,13 +1014,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             final float pageDelta = (float) Math.abs(dx) / (pageWidth + mPageMargin);
             duration = (int) ((pageDelta + 1) * 100);
         }
-        if (this.mScrollDuration > 0) {
-            //如果设置过自动滑动耗时,则使用mScrollDuration
-            duration = this.mScrollDuration;
-        } else {
-            //未设置过,则采用原始逻辑获取duration
-            duration = Math.min(duration, MAX_SETTLE_DURATION);
-        }
+        //未设置过,则采用原始逻辑获取duration
+        duration = Math.min(duration, MAX_SETTLE_DURATION);
 
         // Reset the "scroll started" flag. It will be flipped to true in all places
         // where we call computeScrollOffset().
@@ -1303,8 +1025,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     }
 
     //添加Item到Items里面，会调用到instantiateItem来生成新的Item
-    CoolViewPager.ItemInfo addNewItem(int position, int index) {
-        CoolViewPager.ItemInfo ii = new CoolViewPager.ItemInfo();
+    ItemInfo addNewItem(int position, int index) {
+        ItemInfo ii = new ItemInfo();
         ii.position = position;
         ii.object = mAdapter.instantiateItem(this, position);
         ii.widthFactor = mAdapter.getPageWidth(position);
@@ -1327,7 +1049,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         boolean isUpdating = false;
         for (int i = 0; i < mItems.size(); i++) {
-            final CoolViewPager.ItemInfo ii = mItems.get(i);
+            final ItemInfo ii = mItems.get(i);
             final int newPos = mAdapter.getItemPosition(ii.object);
 
             if (newPos == PagerAdapter.POSITION_UNCHANGED) {
@@ -1376,7 +1098,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             final int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
-                final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
                 if (!lp.isDecor) {
                     lp.widthFactor = 0.f;
                 }
@@ -1430,9 +1152,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         final int pageLimit = mOffscreenPageLimit;
         //起始位置：当前的页面减去缓存页面数量，并确保开始的位置是大于等于0。
         final int startPos = Math.max(0, mCurItem - pageLimit);
-
-        //结束位置：当前页面加上缓存页面的数量，并确保是小于数据源的个数
         final int N = mAdapter.getCount();
+        //结束位置：当前页面加上缓存页面的数量，并确保是小于数据源的个数
         final int endPos = Math.min(N - 1, mCurItem + pageLimit);
 
         //如果从Adapter拿到的大小和自认为的大小不一样，那说明Adapter数据源的个数发生变化了，抛出异常
@@ -1473,6 +1194,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         // Fill 3x the available width or up to the number of offscreen
         // pages requested to either side, whichever is larger.
         // If we have no current item we have no work to do.
+
         //**管理mItems中的其余对象
         //由于mItems的长度是有限的，当页面总数大于mItems的长度时需要不断添加和移除ItemInfo进来
         if (curItem != null) {
@@ -1490,13 +1212,14 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     2.f - curItem.widthFactor + (float) getPaddingLeft() / (float) clientWidth;
             //遍历左半部分
             for (int pos = mCurItem - 1; pos >= 0; pos--) {
-                ////pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
+                //pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
                 if (extraWidthLeft >= leftWidthNeeded && pos < startPos) {
 
                     //如果是空的话就退出循环，说明已经遍历完了
                     if (ii == null) {
                         break;
                     }
+
                     //从下面拿到的ItemInfo，如果不为空就走下面的销毁和移除的流程
                     if (pos == ii.position && !ii.scrolling) {
                         mItems.remove(itemIndex);
@@ -1505,20 +1228,18 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                             Log.i(TAG, "populate() - destroyItem() with pos: " + pos
                                     + " view: " + ((View) ii.object));
                         }
-                        itemIndex--; //删除后左边的的索引也要减1
-                        curIndex--;  //当前的索引也要减1
-                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //然后会再次进入，并走上面的break
+                        itemIndex--;//删除后左边的的索引也要减1
+                        curIndex--; //当前的索引也要减1
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;//然后会再次进入，并走上面的break
                     }
-                    //如果左边的ItemInfo对象不为null
                 } else if (ii != null && pos == ii.position) {
-                    extraWidthLeft += ii.widthFactor; //累加curItem左边需要的宽度
-                    itemIndex--;                      //在再向左移动一个位置
+                    extraWidthLeft += ii.widthFactor;//累加curItem左边需要的宽度
+                    itemIndex--;                     //在再向左移动一个位置
                     ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
-                    //如果左边的ItemInfo对象为null
                 } else {
-                    ii = addNewItem(pos, itemIndex + 1);//新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
-                    extraWidthLeft += ii.widthFactor;         //累加左边的宽度
-                    curIndex++;                               //因为左边插入了一个对象，所以当前curIndex要加1
+                    ii = addNewItem(pos, itemIndex + 1);  //新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
+                    extraWidthLeft += ii.widthFactor;           //累加左边的宽度
+                    curIndex++;                                 //因为左边插入了一个对象，所以当前curIndex要加1
                     ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
                 }
             }
@@ -1560,6 +1281,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
             //计算Items的偏移量
             calculatePageOffsets(curItem, curIndex, oldCurInfo);
+
+            //回调PagerAdapter的setPrimaryItem，告诉PagerAdapter当前显示的页面
+            mAdapter.setPrimaryItem(this, mCurItem, curItem.object);
         }
 
         if (DEBUG) {
@@ -1568,8 +1292,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
             }
         }
-        //回调PagerAdapter的setPrimaryItem，告诉PagerAdapter当前显示的页面
-        mAdapter.setPrimaryItem(this, mCurItem, curItem != null ? curItem.object : null);
+
         //回调PagerAdapter的finishUpdate，告诉PagerAdapter页面更新结束
         mAdapter.finishUpdate(this);
 
@@ -1578,11 +1301,11 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View child = getChildAt(i);
-            final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+            final LayoutParams lp = (LayoutParams) child.getLayoutParams();
             lp.childIndex = i;
             if (!lp.isDecor && lp.widthFactor == 0.f) {
                 // 0 means requery the adapter for this, it doesn't have a valid width.
-                final CoolViewPager.ItemInfo ii = infoForChild(child);
+                final ItemInfo ii = infoForChild(child);
                 if (ii != null) {
                     lp.widthFactor = ii.widthFactor;
                     lp.position = ii.position;
@@ -1593,7 +1316,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         if (hasFocus()) {
             View currentFocused = findFocus();
-            CoolViewPager.ItemInfo ii = currentFocused != null ? infoForAnyChild(currentFocused) : null;
+            ItemInfo ii = currentFocused != null ? infoForAnyChild(currentFocused) : null;
             if (ii == null || ii.position != mCurItem) {
                 for (int i = 0; i < getChildCount(); i++) {
                     View child = getChildAt(i);
@@ -1608,7 +1331,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
-    //用来更新页卡的排序，
+    //用来更新页集的排序，
     private void sortChildDrawingOrder() {
         if (mDrawingOrder != DRAW_ORDER_DEFAULT) {
             if (mDrawingOrderedChildren == null) {
@@ -1625,7 +1348,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
-    private void calculatePageOffsets(CoolViewPager.ItemInfo curItem, int curIndex, CoolViewPager.ItemInfo oldCurInfo) {
+    private void calculatePageOffsets(ItemInfo curItem, int curIndex, ItemInfo oldCurInfo) {
         final int N = mAdapter.getCount();
         final int width = getClientWidth();
         final float marginOffset = width > 0 ? (float) mPageMargin / width : 0;
@@ -1636,7 +1359,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             //旧的在左边
             if (oldCurPosition < curItem.position) {
                 int itemIndex = 0;
-                CoolViewPager.ItemInfo ii = null;
+                ItemInfo ii = null;
                 float offset = oldCurInfo.offset + oldCurInfo.widthFactor + marginOffset;
                 for (int pos = oldCurPosition + 1;
                      pos <= curItem.position && itemIndex < mItems.size(); pos++) {
@@ -1654,10 +1377,11 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     ii.offset = offset;
                     offset += ii.widthFactor + marginOffset;
                 }
+
                 //旧的在右边
             } else if (oldCurPosition > curItem.position) {
                 int itemIndex = mItems.size() - 1;
-                CoolViewPager.ItemInfo ii = null;
+                ItemInfo ii = null;
                 float offset = oldCurInfo.offset;
                 for (int pos = oldCurPosition - 1;
                      pos >= curItem.position && itemIndex >= 0; pos--) {
@@ -1687,7 +1411,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 ? curItem.offset + curItem.widthFactor - 1 : Float.MAX_VALUE;
         // Previous pages
         for (int i = curIndex - 1; i >= 0; i--, pos--) {
-            final CoolViewPager.ItemInfo ii = mItems.get(i);
+            final ItemInfo ii = mItems.get(i);
             while (pos > ii.position) {
                 offset -= mAdapter.getPageWidth(pos--) + marginOffset;
             }
@@ -1699,7 +1423,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         pos = curItem.position + 1;
         // Next pages
         for (int i = curIndex + 1; i < itemCount; i++, pos++) {
-            final CoolViewPager.ItemInfo ii = mItems.get(i);
+            final ItemInfo ii = mItems.get(i);
             while (pos < ii.position) {
                 offset += mAdapter.getPageWidth(pos++) + marginOffset;
             }
@@ -1744,18 +1468,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
         public static final Creator<SavedState> CREATOR = new ClassLoaderCreator<SavedState>() {
             @Override
-            public CoolViewPager.SavedState createFromParcel(Parcel in, ClassLoader loader) {
-                return new CoolViewPager.SavedState(in, loader);
+            public SavedState createFromParcel(Parcel in, ClassLoader loader) {
+                return new SavedState(in, loader);
             }
 
             @Override
-            public CoolViewPager.SavedState createFromParcel(Parcel in) {
-                return new CoolViewPager.SavedState(in, null);
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in, null);
             }
-
             @Override
-            public CoolViewPager.SavedState[] newArray(int size) {
-                return new CoolViewPager.SavedState[size];
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
             }
         };
 
@@ -1773,7 +1496,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     @Override
     public Parcelable onSaveInstanceState() {
         Parcelable superState = super.onSaveInstanceState();
-        CoolViewPager.SavedState ss = new CoolViewPager.SavedState(superState);
+        SavedState ss = new SavedState(superState);
         ss.position = mCurItem;
         if (mAdapter != null) {
             ss.adapterState = mAdapter.saveState();
@@ -1783,12 +1506,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     @Override
     public void onRestoreInstanceState(Parcelable state) {
-        if (!(state instanceof CoolViewPager.SavedState)) {
+        if (!(state instanceof SavedState)) {
             super.onRestoreInstanceState(state);
             return;
         }
 
-        CoolViewPager.SavedState ss = (CoolViewPager.SavedState) state;
+        SavedState ss = (SavedState) state;
         super.onRestoreInstanceState(ss.getSuperState());
 
         if (mAdapter != null) {
@@ -1806,7 +1529,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         if (!checkLayoutParams(params)) {
             params = generateLayoutParams(params);
         }
-        final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) params;
+        final LayoutParams lp = (LayoutParams) params;
         // Any views added via inflation should be classed as part of the decor
         lp.isDecor |= isDecorView(child);
         if (mInLayout) {
@@ -1830,7 +1553,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     private static boolean isDecorView(@NonNull View view) {
         Class<?> clazz = view.getClass();
-        return clazz.getAnnotation(CoolViewPager.DecorView.class) != null;
+        return clazz.getAnnotation(DecorView.class) != null;
     }
 
     @Override
@@ -1842,9 +1565,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
-    CoolViewPager.ItemInfo infoForChild(View child) {
+    ItemInfo infoForChild(View child) {
         for (int i = 0; i < mItems.size(); i++) {
-            CoolViewPager.ItemInfo ii = mItems.get(i);
+            ItemInfo ii = mItems.get(i);
             if (mAdapter.isViewFromObject(child, ii.object)) {
                 return ii;
             }
@@ -1852,7 +1575,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         return null;
     }
 
-    CoolViewPager.ItemInfo infoForAnyChild(View child) {
+    ItemInfo infoForAnyChild(View child) {
         ViewParent parent;
         while ((parent = child.getParent()) != this) {
             if (parent == null || !(parent instanceof View)) {
@@ -1863,9 +1586,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         return infoForChild(child);
     }
 
-    CoolViewPager.ItemInfo infoForPosition(int position) {
+    ItemInfo infoForPosition(int position) {
         for (int i = 0; i < mItems.size(); i++) {
-            CoolViewPager.ItemInfo ii = mItems.get(i);
+            ItemInfo ii = mItems.get(i);
             if (ii.position == position) {
                 return ii;
             }
@@ -1873,6 +1596,11 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         return null;
     }
 
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        mFirstLayout = true;
+    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -1881,6 +1609,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         // our view.  We can't really know what it is since we will be
         // adding and removing different arbitrary views and do not
         // want the layout to change as this happens.
+
         //根据布局文件设置尺寸，默认是0
         setMeasuredDimension(getDefaultSize(0, widthMeasureSpec),
                 getDefaultSize(0, heightMeasureSpec));
@@ -1915,10 +1644,10 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     //默认DecorView模式对应的宽高是wrap_content
                     int widthMode = MeasureSpec.AT_MOST;
                     int heightMode = MeasureSpec.AT_MOST;
-
                     //true 水平或垂直方向上是 match_parent，否则是wrap
                     boolean consumeVertical = vgrav == Gravity.TOP || vgrav == Gravity.BOTTOM;
                     boolean consumeHorizontal = hgrav == Gravity.LEFT || hgrav == Gravity.RIGHT;
+
                     // 得到测量的模式
                     if (consumeVertical) {
                         widthMode = MeasureSpec.EXACTLY;
@@ -1928,15 +1657,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
                     int widthSize = childWidthSize;
                     int heightSize = childHeightSize;
-                    if (lp.width != CoolViewPager.LayoutParams.WRAP_CONTENT) {
+                    if (lp.width != LayoutParams.WRAP_CONTENT) {
                         widthMode = MeasureSpec.EXACTLY;
-                        if (lp.width != CoolViewPager.LayoutParams.MATCH_PARENT) {
+                        if (lp.width != LayoutParams.MATCH_PARENT) {
                             widthSize = lp.width;
                         }
                     }
-                    if (lp.height != CoolViewPager.LayoutParams.WRAP_CONTENT) {
+                    if (lp.height != LayoutParams.WRAP_CONTENT) {
                         heightMode = MeasureSpec.EXACTLY;
-                        if (lp.height != CoolViewPager.LayoutParams.MATCH_PARENT) {
+                        if (lp.height != LayoutParams.MATCH_PARENT) {
                             heightSize = lp.height;
                         }
                     }
@@ -1973,7 +1702,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     Log.v(TAG, "Measuring #" + i + " " + child + ": " + mChildWidthMeasureSpec);
                 }
 
-                final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
                 if (lp == null || !lp.isDecor) {
                     final int widthSpec = MeasureSpec.makeMeasureSpec(
                             (int) (childWidthSize * lp.widthFactor), MeasureSpec.EXACTLY);
@@ -2008,7 +1737,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 scrollTo(newOffsetPixels, getScrollY());
             }
         } else {
-            final CoolViewPager.ItemInfo ii = infoForPosition(mCurItem);
+            final ItemInfo ii = infoForPosition(mCurItem);
             final float scrollOffset = ii != null ? Math.min(ii.offset, mLastOffset) : 0;
             final int scrollPos =
                     (int) (scrollOffset * (width - getPaddingLeft() - getPaddingRight()));
@@ -2029,6 +1758,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         int paddingRight = getPaddingRight();
         int paddingBottom = getPaddingBottom();
         final int scrollX = getScrollX();
+
         //DecorView 数量
         int decorCount = 0;
 
@@ -2049,7 +1779,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                         default:
                             childLeft = paddingLeft;
                             break;
-                        case Gravity.LEFT: //DecorView往最左边靠
+                        case Gravity.LEFT://DecorView往最左边靠
                             childLeft = paddingLeft;
                             paddingLeft += child.getMeasuredWidth();
                             break;
@@ -2094,8 +1824,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         for (int i = 0; i < count; i++) {
             final View child = getChildAt(i);
             if (child.getVisibility() != GONE) {
-                final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
-                CoolViewPager.ItemInfo ii;
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+                ItemInfo ii;
                 //infoForChild 会调用Adapter的isViewFromObject
                 if (!lp.isDecor && (ii = infoForChild(child)) != null) {
                     //子页卡的左偏移量，第一个是loff是0，第二个是一个页面向左偏移一个页面的宽度，以此类推
@@ -2140,7 +1870,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     public void computeScroll() {
         //标记当前正在移动
         mIsScrollStarted = true;
-        //确保mScroller还没结束滑动，并开始计算滑动位置
         if (!mScroller.isFinished() && mScroller.computeScrollOffset()) {
             int oldX = getScrollX();
             int oldY = getScrollY();
@@ -2149,7 +1878,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
             if (oldX != x || oldY != y) {
                 scrollTo(x, y);
-                //调用pageScrolled 只有在没有child情况下才会false
+                //确保mScroller还没结束滑动，并开始计算滑动位置
                 if (!pageScrolled(x)) {
                     //如果没有子页面中断动画并且滑动到x=0位置，但是y保持滑动
                     mScroller.abortAnimation();
@@ -2174,7 +1903,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 // Let's skip this call since it doesn't make sense in this state
                 return false;
             }
-            // 如果子类集成，必须调用父类的onPageScrolled 里面会使 mCalledSuper = true;/
             mCalledSuper = false;
             onPageScrolled(0, 0, 0);
             if (!mCalledSuper) {
@@ -2183,7 +1911,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             }
             return false;
         }
-        final CoolViewPager.ItemInfo ii = infoForCurrentScrollPosition();
+        final ItemInfo ii = infoForCurrentScrollPosition();
         // 获取显示区域的宽度
         final int width = getClientWidth();
         //加上外边距后的宽度
@@ -2206,11 +1934,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         return true;
     }
 
-    @Override
-    public int getChildCount() {
-        return super.getChildCount();
-    }
-
     /**
      * This method will be invoked when the current page is scrolled, either as part
      * of a programmatically initiated smooth scroll or a user initiated touch scroll.
@@ -2218,9 +1941,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * (e.g. super.onPageScrolled(position, offset, offsetPixels)) before onPageScrolled
      * returns.
      *
-     * @param position     Position index of the first page currently being displayed.
-     *                     Page position+1 will be visible if positionOffset is nonzero.
-     * @param offset       Value from [0, 1) indicating the offset from the page at position.
+     * @param position Position index of the first page currently being displayed.
+     *                 Page position+1 will be visible if positionOffset is nonzero.
+     * @param offset Value from [0, 1) indicating the offset from the page at position.
      * @param offsetPixels Value in pixels indicating the offset from position.
      */
     @CallSuper
@@ -2234,7 +1957,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             final int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
-                final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
                 if (!lp.isDecor) continue;
 
                 final int hgrav = lp.gravity & Gravity.HORIZONTAL_GRAVITY_MASK;
@@ -2272,7 +1995,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             final int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
-                final CoolViewPager.LayoutParams lp = (CoolViewPager.LayoutParams) child.getLayoutParams();
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
                 if (lp.isDecor) continue;
                 final float transformPos = (float) (child.getLeft() - scrollX) / getClientWidth();
@@ -2289,7 +2012,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         if (mOnPageChangeListeners != null) {
             for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
-                CoolViewPager.OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
                 if (listener != null) {
                     listener.onPageScrolled(position, offset, offsetPixels);
                 }
@@ -2306,7 +2029,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         if (mOnPageChangeListeners != null) {
             for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
-                CoolViewPager.OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
                 if (listener != null) {
                     listener.onPageSelected(position);
                 }
@@ -2323,7 +2046,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         if (mOnPageChangeListeners != null) {
             for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
-                CoolViewPager.OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
                 if (listener != null) {
                     listener.onPageScrollStateChanged(state);
                 }
@@ -2356,7 +2079,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         mPopulatePending = false;
         for (int i = 0; i < mItems.size(); i++) {
-            CoolViewPager.ItemInfo ii = mItems.get(i);
+            ItemInfo ii = mItems.get(i);
             if (ii.scrolling) {
                 needPopulate = true;
                 ii.scrolling = false;
@@ -2385,29 +2108,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
-    /**
-     * 将事件原始X,Y坐标进行置换
-     *
-     * @param event
-     * @return
-     */
-    private MotionEvent swapTouchEvent(MotionEvent event) {
-        float width = getWidth();
-        float height = getHeight();
-        float swappedX = (event.getY() / height) * width;
-        float swappedY = (event.getX() / width) * height;
-        event.setLocation(swappedX, swappedY);
-        return event;
-    }
-
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        /**
-         * 1:如果滑动方向是垂直方向,则将原始MotionEvent的X、Y坐标进行置换
-         */
-        if (mScrollMode == ScrollMode.VERTICAL) {
-            swapTouchEvent(ev);
-        }
         /*
          * This method JUST determines whether we want to intercept the motion.
          * If we return true, onMotionEvent will be called and we do the actual
@@ -2420,15 +2122,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
             // Release the drag.
             if (DEBUG) Log.v(TAG, "Intercept done!");
-            //重置一些变量
             resetTouch();
-            /**
-             * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-             */
-            if (mScrollMode == ScrollMode.VERTICAL) {
-                swapTouchEvent(ev);
-            }
-            //触摸结束
             return false;
         }
 
@@ -2439,77 +2133,17 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             //如果在拖拽页面就拦截
             if (mIsBeingDragged) {
                 if (DEBUG) Log.v(TAG, "Intercept returning true!");
-                /**
-                 * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-                 */
-                if (mScrollMode == ScrollMode.VERTICAL) {
-                    swapTouchEvent(ev);
-                }
                 return true;
             }
             //如果不允许拖拽页面就  放过一切触摸事件
             if (mIsUnableToDrag) {
                 if (DEBUG) Log.v(TAG, "Intercept returning false!");
-                /**
-                 * 2:如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-                 */
-                if (mScrollMode == ScrollMode.VERTICAL) {
-                    swapTouchEvent(ev);
-                }
                 return false;
             }
         }
 
+        //如果是手指移动，准备要开始拖拽页面了,TODO 调试的时候发现并没有进入到这里。。。
         switch (action) {
-
-            case MotionEvent.ACTION_DOWN: {
-                /*
-                 * Remember location of down touch.
-                 * ACTION_DOWN always refers to pointer index 0.
-                 */
-                //记录按下的点位置
-                mLastMotionX = mInitialMotionX = ev.getX();
-                mLastMotionY = mInitialMotionY = ev.getY();
-                //记录按下的手指id,索引到的总是第一个触碰到的手指也就是0
-                mActivePointerId = ev.getPointerId(0);
-                //重置可以拖拽切换页面
-                mIsUnableToDrag = false;
-                //标记开始滚动
-                mIsScrollStarted = true;
-                //手动调用计算滑动的偏移量,如果目前滑动已经结束了，会直接返回，不会计算
-                mScroller.computeScrollOffset();
-
-                //如果此时按下，且页面正在放到最终位置
-                //且当前位置距离最终位置足够远
-                if (mScrollState == SCROLL_STATE_SETTLING
-                        && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
-                    // Let the user 'catch' the pager as it animates.
-                    // 需要停止当前的滑动动画，然后暂停滑动
-                    mScroller.abortAnimation();
-                    mPopulatePending = false;
-                    populate();
-                    //状态改成正在拖拽
-                    mIsBeingDragged = true;
-                    //屏蔽父View的触摸拦截，总是会把事件下发到这里
-                    requestParentDisallowInterceptTouchEvent(true);
-                    //设置滑动状态为滑动中
-                    setScrollState(SCROLL_STATE_DRAGGING);
-                } else {
-                    //当前按下无论如何需要先停止滑动
-                    //结束滚动
-                    completeScroll(false);
-                    mIsBeingDragged = false;
-                }
-
-                if (DEBUG) {
-                    Log.v(TAG, "Down at " + mLastMotionX + "," + mLastMotionY
-                            + " mIsBeingDragged=" + mIsBeingDragged
-                            + "mIsUnableToDrag=" + mIsUnableToDrag);
-                }
-                break;
-            }
-
-            //如果是手指移动，准备要开始拖拽页面了,TODO 调试的时候发现并没有进入到这里。。。
             case MotionEvent.ACTION_MOVE: {
                 /*
                  * mIsBeingDragged == false, otherwise the shortcut would have caught it. Check
@@ -2525,6 +2159,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     // If we don't have a valid id, the touch down wasn't on content.
                     break;
                 }
+
                 //根据触摸点的id来区分不同的手指，仅仅需要关注一个手指
                 final int pointerIndex = ev.findPointerIndex(activePointerId);
                 final float x = ev.getX(pointerIndex);
@@ -2545,10 +2180,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     mLastMotionY = y;
                     //标记现在不可以再拖拽页面了，防止另一个手指按下（ACTION_DOWN）而被影响到
                     mIsUnableToDrag = true;
-                    //如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-                    if (mScrollMode == ScrollMode.VERTICAL) {
-                        swapTouchEvent(ev);
-                    }
                     return false;
                 }
                 //x移动的距离大于最小距离，且斜率小于0.5，则认为是水平方向上的移动
@@ -2578,6 +2209,55 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                 }
                 break;
             }
+
+            case MotionEvent.ACTION_DOWN: {
+                /*
+                 * Remember location of down touch.
+                 * ACTION_DOWN always refers to pointer index 0.
+                 */
+                //记录按下的点位置
+                mLastMotionX = mInitialMotionX = ev.getX();
+                mLastMotionY = mInitialMotionY = ev.getY();
+                //记录按下的手指id,索引到的总是第一个触碰到的手指也就是0
+                mActivePointerId = ev.getPointerId(0);
+                //重置可以拖拽切换页面
+                mIsUnableToDrag = false;
+                //标记开始滚动
+                mIsScrollStarted = true;
+                //手动调用计算滑动的偏移量,如果目前滑动已经结束了，会直接返回，不会计算
+                mScroller.computeScrollOffset();
+
+                //如果此时按下，且页面正在放到最终位置
+                //且当前位置距离最终位置足够远
+                if (mScrollState == SCROLL_STATE_SETTLING
+                        && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
+                    // Let the user 'catch' the pager as it animates.
+
+                    // 需要停止当前的滑动动画，然后暂停滑动
+                    mScroller.abortAnimation();
+                    mPopulatePending = false;
+                    populate();
+                    //状态改成正在拖拽
+                    mIsBeingDragged = true;
+                    //屏蔽父View的触摸拦截，总是会把事件下发到这里
+                    requestParentDisallowInterceptTouchEvent(true);
+                    //设置滑动状态为滑动中
+                    setScrollState(SCROLL_STATE_DRAGGING);
+                } else {
+                    //当前按下无论如何需要先停止滑动
+                    //结束滚动
+                    completeScroll(false);
+                    mIsBeingDragged = false;
+                }
+
+                if (DEBUG) {
+                    Log.v(TAG, "Down at " + mLastMotionX + "," + mLastMotionY
+                            + " mIsBeingDragged=" + mIsBeingDragged
+                            + "mIsUnableToDrag=" + mIsUnableToDrag);
+                }
+                break;
+            }
+
             //TODO 调试的时候发现并没有进入到这里。。。
             case MotionEvent.ACTION_POINTER_UP:
                 onSecondaryPointerUp(ev);
@@ -2589,27 +2269,15 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
         mVelocityTracker.addMovement(ev);
 
-
-        //如果滑动方向是垂直方向,则将1:置换过的X、Y坐标重置为原始值
-        if (mScrollMode == ScrollMode.VERTICAL) {
-            swapTouchEvent(ev);
-        }
         /*
          * The only time we want to intercept motion events is if we are in the
          * drag mode.
          */
-        //只有当前是拖拽页面时才拦截
         return mIsBeingDragged;
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-
-        //如果滑动方向是垂直方向,则将原始MotionEvent的X、Y坐标进行置换
-        if (mScrollMode == ScrollMode.VERTICAL) {
-            swapTouchEvent(ev);
-        }
-
         //如果此时正在模拟一个假的拖动，触摸事件就消费掉
         if (mFakeDragging) {
             // A fake drag is in progress already, ignore this real one
@@ -2626,6 +2294,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             // descendants.
             return false;
         }
+
         //没上适配器或者里面没东西就放过这个触摸事件
         if (mAdapter == null || mAdapter.getCount() == 0) {
             // Nothing to present or scroll; nothing to touch.
@@ -2678,12 +2347,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     if (DEBUG) {
                         Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
                     }
+
                     //如果滑动的斜率小于1
                     if (xDiff > mTouchSlop && xDiff > yDiff) {
                         if (DEBUG) Log.v(TAG, "Starting drag!");
-                        //开始滑动了
                         mIsBeingDragged = true;
-                        //请求父布局不再拦截触摸事件
+                        //开始滑动了
                         requestParentDisallowInterceptTouchEvent(true);
                         //最新x坐标设置为初始值加减mTouchSlop这个裕量，保证达到滑动的条件
                         mLastMotionX = x - mInitialMotionX > 0 ? mInitialMotionX + mTouchSlop :
@@ -2711,6 +2380,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     needsInvalidate |= performDrag(x);
                 }
                 break;
+
             //手指抬起
             case MotionEvent.ACTION_UP:
                 //必须是正在拖动的状态
@@ -2726,7 +2396,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                     final int width = getClientWidth();
                     final int scrollX = getScrollX();
                     //拿到当前的ItemInfo
-                    final CoolViewPager.ItemInfo ii = infoForCurrentScrollPosition();
+                    final ItemInfo ii = infoForCurrentScrollPosition();
                     final float marginOffset = (float) mPageMargin / width;
                     final int currentPage = ii.position;
                     final float pageOffset = (((float) scrollX / width) - ii.offset)
@@ -2774,13 +2444,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         endDrag();
         mLeftEdge.onRelease();
         mRightEdge.onRelease();
-        mTopEdge.onRelease();
-        mBottomEdge.onRelease();
-        if (mScrollMode == ScrollMode.VERTICAL) {
-            needsInvalidate = mTopEdge.isFinished() || mBottomEdge.isFinished();
-        } else {
-            needsInvalidate = mLeftEdge.isFinished() || mRightEdge.isFinished();
-        }
+        needsInvalidate = mLeftEdge.isFinished() || mRightEdge.isFinished();
         return needsInvalidate;
     }
 
@@ -2793,23 +2457,24 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     private boolean performDrag(float x) {
         boolean needsInvalidate = false;
-        //拿到拖动的偏移量
-        final float deltaX = mLastMotionX - x;
-        //更新最新的x坐标
-        mLastMotionX = x;
+
+
+        final float deltaX = mLastMotionX - x;  //拿到拖动的偏移量
+        mLastMotionX = x;                       //更新最新的x坐标
 
         //将旧的滑动目标X加上偏移，就是新的滑动目标
         float oldScrollX = getScrollX();
         float scrollX = oldScrollX + deltaX;
         final int width = getClientWidth();
 
-        float leftBound = width * mFirstOffset;//页面卷左测距离原点的距离
-        float rightBound = width * mLastOffset;//页面卷右侧距离原点的距离
-        boolean leftAbsolute = true;//是否到达左侧边界
-        boolean rightAbsolute = true;//是否到达右侧边界
+        float leftBound = width * mFirstOffset; //页面卷左测距离原点的距离
+        float rightBound = width * mLastOffset; //页面卷右侧距离原点的距离
+        boolean leftAbsolute = true;            //是否到达左侧边界
+        boolean rightAbsolute = true;           //是否到达右侧边界
+
         //拿到页卷的首个和最后一个
-        final CoolViewPager.ItemInfo firstItem = mItems.get(0);
-        final CoolViewPager.ItemInfo lastItem = mItems.get(mItems.size() - 1);
+        final ItemInfo firstItem = mItems.get(0);
+        final ItemInfo lastItem = mItems.get(mItems.size() - 1);
         //如果页卷还没有到达左边界，那需要算出页卷的左侧距离原点的距离；
         if (firstItem.position != 0) {
             leftAbsolute = false;
@@ -2825,22 +2490,14 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         if (scrollX < leftBound) {
             if (leftAbsolute) {
                 float over = leftBound - scrollX;
-                if (mScrollMode == ScrollMode.VERTICAL) {
-                    mTopEdge.onPull(Math.abs(over) / width);
-                } else {
-                    mLeftEdge.onPull(Math.abs(over) / width);
-                }
+                mLeftEdge.onPull(Math.abs(over) / width);
                 needsInvalidate = true;
             }
             scrollX = leftBound;
         } else if (scrollX > rightBound) {
             if (rightAbsolute) {
                 float over = scrollX - rightBound;
-                if (mScrollMode == ScrollMode.VERTICAL) {
-                    mBottomEdge.onPull(Math.abs(over) / width);
-                } else {
-                    mRightEdge.onPull(Math.abs(over) / width);
-                }
+                mRightEdge.onPull(Math.abs(over) / width);
                 needsInvalidate = true;
             }
             scrollX = rightBound;
@@ -2857,9 +2514,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * @return Info about the page at the current scroll position.
-     * This can be synthetic for a missing middle page; the 'object' field can be null.
+     *         This can be synthetic for a missing middle page; the 'object' field can be null.
      */
-    private CoolViewPager.ItemInfo infoForCurrentScrollPosition() {
+    private ItemInfo infoForCurrentScrollPosition() {
         final int width = getClientWidth();
         final float scrollOffset = width > 0 ? (float) getScrollX() / width : 0;
         final float marginOffset = width > 0 ? (float) mPageMargin / width : 0;
@@ -2868,9 +2525,9 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         float lastWidth = 0.f;
         boolean first = true;
 
-        CoolViewPager.ItemInfo lastItem = null;
+        ItemInfo lastItem = null;
         for (int i = 0; i < mItems.size(); i++) {
-            CoolViewPager.ItemInfo ii = mItems.get(i);
+            ItemInfo ii = mItems.get(i);
             float offset;
             if (!first && ii.position != lastPos + 1) {
                 // Create a synthetic item for a missing page.
@@ -2912,8 +2569,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
 
         if (mItems.size() > 0) {
-            final CoolViewPager.ItemInfo firstItem = mItems.get(0);
-            final CoolViewPager.ItemInfo lastItem = mItems.get(mItems.size() - 1);
+            final ItemInfo firstItem = mItems.get(0);
+            final ItemInfo lastItem = mItems.get(mItems.size() - 1);
 
             // Only let the user target pages we have items for
             targetPage = Math.max(firstItem.position, Math.min(targetPage, lastItem.position));
@@ -2922,74 +2579,41 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         return targetPage;
     }
 
-
     //主要来处理边界效果
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
         boolean needsInvalidate = false;
+
         final int overScrollMode = getOverScrollMode();
         if (overScrollMode == View.OVER_SCROLL_ALWAYS
                 || (overScrollMode == View.OVER_SCROLL_IF_CONTENT_SCROLLS
                 && mAdapter != null && mAdapter.getCount() > 1)) {
-            if (mInfiniteLoop) {
-            } else {
-                if (mScrollMode == ScrollMode.VERTICAL) {
-                    if (!mTopEdge.isFinished()) {
-                        int restoreCount = canvas.save();
-                        int width = getWidth();
-                        int height = getHeight();
-                        if (getScrollX() > 0) {
-                            canvas.translate(getScrollX(), 0);
-                        }
-                        mTopEdge.setSize(width, height);
-                        needsInvalidate |= mTopEdge.draw(canvas);
-                        canvas.restoreToCount(restoreCount);
-                    }
-                    if (!mBottomEdge.isFinished()) {
-                        int restoreCount = canvas.save();
-                        int width = getWidth();
-                        int height = getHeight();
-                        if (getScrollX() > 0) {
-                            canvas.translate(getScrollX(), 0);
-                        }
-                        canvas.rotate(180);
-                        canvas.translate(-width, -height);
-                        mBottomEdge.setSize(width, height);
-                        needsInvalidate |= mBottomEdge.draw(canvas);
-                        canvas.restoreToCount(restoreCount);
-                    }
-                } else {
-                    if (!mLeftEdge.isFinished()) {
-                        final int restoreCount = canvas.save();
-                        final int height = getHeight() - getPaddingTop() - getPaddingBottom();
-                        final int width = getWidth();
-                        canvas.rotate(270);
-                        canvas.translate(-height + getPaddingTop(), mFirstOffset * width);
-                        mLeftEdge.setSize(height, width);
-                        needsInvalidate |= mLeftEdge.draw(canvas);
-                        canvas.restoreToCount(restoreCount);
-                    }
-                    if (!mRightEdge.isFinished()) {
-                        final int restoreCount = canvas.save();
-                        final int width = getWidth();
-                        final int height = getHeight() - getPaddingTop() - getPaddingBottom();
-                        canvas.rotate(90);
-                        canvas.translate(-getPaddingTop(), -(mLastOffset + 1) * width);
-                        mRightEdge.setSize(height, width);
-                        needsInvalidate |= mRightEdge.draw(canvas);
-                        canvas.restoreToCount(restoreCount);
-                    }
-                }
+            if (!mLeftEdge.isFinished()) {
+                final int restoreCount = canvas.save();
+                final int height = getHeight() - getPaddingTop() - getPaddingBottom();
+                final int width = getWidth();
+
+                canvas.rotate(270);
+                canvas.translate(-height + getPaddingTop(), mFirstOffset * width);
+                mLeftEdge.setSize(height, width);
+                needsInvalidate |= mLeftEdge.draw(canvas);
+                canvas.restoreToCount(restoreCount);
+            }
+            if (!mRightEdge.isFinished()) {
+                final int restoreCount = canvas.save();
+                final int width = getWidth();
+                final int height = getHeight() - getPaddingTop() - getPaddingBottom();
+
+                canvas.rotate(90);
+                canvas.translate(-getPaddingTop(), -(mLastOffset + 1) * width);
+                mRightEdge.setSize(height, width);
+                needsInvalidate |= mRightEdge.draw(canvas);
+                canvas.restoreToCount(restoreCount);
             }
         } else {
-            if (mScrollMode == ScrollMode.VERTICAL) {
-                mTopEdge.finish();
-                mBottomEdge.finish();
-            } else {
-                mLeftEdge.finish();
-                mRightEdge.finish();
-            }
+            mLeftEdge.finish();
+            mRightEdge.finish();
         }
 
         if (needsInvalidate) {
@@ -2998,13 +2622,10 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         }
     }
 
-
-
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        //主要是处理Margin的相关参数
         // Draw the margin drawable between pages if needed.
         if (mPageMargin > 0 && mMarginDrawable != null && mItems.size() > 0 && mAdapter != null) {
             final int scrollX = getScrollX();
@@ -3012,7 +2633,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
             final float marginOffset = (float) mPageMargin / width;
             int itemIndex = 0;
-            CoolViewPager.ItemInfo ii = mItems.get(0);
+            ItemInfo ii = mItems.get(0);
             float offset = ii.offset;
             final int itemCount = mItems.size();
             final int firstPos = ii.position;
@@ -3047,18 +2668,18 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Start a fake drag of the pager.
-     * <p>
+     *
      * <p>A fake drag can be useful if you want to synchronize the motion of the ViewPager
      * with the touch scrolling of another view, while still letting the ViewPager
      * control the snapping motion and fling behavior. (e.g. parallax-scrolling tabs.)
      * Call {@link #fakeDragBy(float)} to simulate the actual drag motion. Call
      * {@link #endFakeDrag()} to complete the fake drag and fling as necessary.
-     * 模拟一个手指滑动，例如点击Tab后ViewPager会滑动到相应的位置
-     * <p>
+     *
      * <p>During a fake drag the ViewPager will ignore all touch events. If a real drag
      * is already in progress, this method will return false.
      *
      * @return true if the fake drag began successfully, false if it could not be started.
+     *
      * @see #fakeDragBy(float)
      * @see #endFakeDrag()
      */
@@ -3100,7 +2721,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             mPopulatePending = true;
             final int width = getClientWidth();
             final int scrollX = getScrollX();
-            final CoolViewPager.ItemInfo ii = infoForCurrentScrollPosition();
+            final ItemInfo ii = infoForCurrentScrollPosition();
             final int currentPage = ii.position;
             final float pageOffset = (((float) scrollX / width) - ii.offset) / ii.widthFactor;
             final int totalDelta = (int) (mLastMotionX - mInitialMotionX);
@@ -3138,8 +2759,8 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         float leftBound = width * mFirstOffset;
         float rightBound = width * mLastOffset;
 
-        final CoolViewPager.ItemInfo firstItem = mItems.get(0);
-        final CoolViewPager.ItemInfo lastItem = mItems.get(mItems.size() - 1);
+        final ItemInfo firstItem = mItems.get(0);
+        final ItemInfo lastItem = mItems.get(mItems.size() - 1);
         if (firstItem.position != 0) {
             leftBound = firstItem.offset * width;
         }
@@ -3169,6 +2790,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      * Returns true if a fake drag is in progress.
      *
      * @return true if currently in a fake drag, false otherwise.
+     *
      * @see #beginFakeDrag()
      * @see #fakeDragBy(float)
      * @see #endFakeDrag()
@@ -3222,7 +2844,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
      *
      * @param direction Negative to check scrolling left, positive to check scrolling right.
      * @return Whether this ViewPager can be scrolled in the specified direction. It will always
-     * return false if the specified direction is 0.
+     *         return false if the specified direction is 0.
      */
     @Override
     public boolean canScrollHorizontally(int direction) {
@@ -3243,14 +2865,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     /**
      * Tests scrollability within child views of v given a delta of dx.
-     * 主要判断了滑动是否有在视图之内进行，用dx判断子视图里面的视图是否可以水平滑动canScrollHorizontally(-dx)
      *
-     * @param v      View to test for horizontal scrollability
+     * @param v View to test for horizontal scrollability
      * @param checkV Whether the view v passed should itself be checked for scrollability (true),
      *               or just its children (false).
-     * @param dx     Delta scrolled in pixels
-     * @param x      X coordinate of the active touch point
-     * @param y      Y coordinate of the active touch point
+     * @param dx Delta scrolled in pixels
+     * @param x X coordinate of the active touch point
+     * @param y Y coordinate of the active touch point
      * @return true if child views of v can be scrolled by delta of dx.
      */
     protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
@@ -3448,7 +3069,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
             for (int i = 0; i < getChildCount(); i++) {
                 final View child = getChildAt(i);
                 if (child.getVisibility() == VISIBLE) {
-                    CoolViewPager.ItemInfo ii = infoForChild(child);
+                    ItemInfo ii = infoForChild(child);
                     if (ii != null && ii.position == mCurItem) {
                         child.addFocusables(views, direction, focusableMode);
                     }
@@ -3488,7 +3109,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         for (int i = 0; i < getChildCount(); i++) {
             final View child = getChildAt(i);
             if (child.getVisibility() == VISIBLE) {
-                CoolViewPager.ItemInfo ii = infoForChild(child);
+                ItemInfo ii = infoForChild(child);
                 if (ii != null && ii.position == mCurItem) {
                     child.addTouchables(views);
                 }
@@ -3518,7 +3139,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         for (int i = index; i != end; i += increment) {
             View child = getChildAt(i);
             if (child.getVisibility() == VISIBLE) {
-                CoolViewPager.ItemInfo ii = infoForChild(child);
+                ItemInfo ii = infoForChild(child);
                 if (ii != null && ii.position == mCurItem) {
                     if (child.requestFocus(direction, previouslyFocusedRect)) {
                         return true;
@@ -3541,7 +3162,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         for (int i = 0; i < childCount; i++) {
             final View child = getChildAt(i);
             if (child.getVisibility() == VISIBLE) {
-                final CoolViewPager.ItemInfo ii = infoForChild(child);
+                final ItemInfo ii = infoForChild(child);
                 if (ii != null && ii.position == mCurItem
                         && child.dispatchPopulateAccessibilityEvent(event)) {
                     return true;
@@ -3554,7 +3175,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     @Override
     protected ViewGroup.LayoutParams generateDefaultLayoutParams() {
-        return new CoolViewPager.LayoutParams();
+        return new LayoutParams();
     }
 
     @Override
@@ -3564,12 +3185,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
 
     @Override
     protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
-        return p instanceof CoolViewPager.LayoutParams && super.checkLayoutParams(p);
+        return p instanceof LayoutParams && super.checkLayoutParams(p);
     }
 
     @Override
     public ViewGroup.LayoutParams generateLayoutParams(AttributeSet attrs) {
-        return new CoolViewPager.LayoutParams(getContext(), attrs);
+        return new LayoutParams(getContext(), attrs);
     }
 
     class MyAccessibilityDelegate extends AccessibilityDelegateCompat {
@@ -3577,7 +3198,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         @Override
         public void onInitializeAccessibilityEvent(View host, AccessibilityEvent event) {
             super.onInitializeAccessibilityEvent(host, event);
-            event.setClassName(CoolViewPager.class.getName());
+            event.setClassName(ViewPager.class.getName());
             event.setScrollable(canScroll());
             if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_SCROLLED && mAdapter != null) {
                 event.setItemCount(mAdapter.getCount());
@@ -3589,7 +3210,7 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         @Override
         public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfoCompat info) {
             super.onInitializeAccessibilityNodeInfo(host, info);
-            info.setClassName(CoolViewPager.class.getName());
+            info.setClassName(ViewPager.class.getName());
             info.setScrollable(canScroll());
             if (canScrollHorizontally(1)) {
                 info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD);
@@ -3610,15 +3231,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
                         setCurrentItem(mCurItem + 1);
                         return true;
                     }
-                }
-                return false;
+                } return false;
                 case AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD: {
                     if (canScrollHorizontally(-1)) {
                         setCurrentItem(mCurItem - 1);
                         return true;
                     }
-                }
-                return false;
+                } return false;
             }
             return false;
         }
@@ -3636,7 +3255,6 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         public void onChanged() {
             dataSetChanged();
         }
-
         @Override
         public void onInvalidated() {
             dataSetChanged();
@@ -3657,14 +3275,13 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
         /**
          * Gravity setting for use on decor views only:
          * Where to position the view page within the overall ViewPager
-         * container; constants are defined in {@link Gravity}.
+         * container; constants are defined in {@link android.view.Gravity}.
          */
         public int gravity;
 
         /**
          * Width as a 0-1 multiplier of the measured pager width
          */
-        //widthFactor取值是[0,1]的浮点数,表示在ViewPager显示区域中的宽度比例
         float widthFactor = 0.f;
 
         /**
@@ -3699,118 +3316,12 @@ public class CoolViewPager extends ViewGroup implements ICoolViewPagerFeature {
     static class ViewPositionComparator implements Comparator<View> {
         @Override
         public int compare(View lhs, View rhs) {
-            final CoolViewPager.LayoutParams llp = (CoolViewPager.LayoutParams) lhs.getLayoutParams();
-            final CoolViewPager.LayoutParams rlp = (CoolViewPager.LayoutParams) rhs.getLayoutParams();
+            final LayoutParams llp = (LayoutParams) lhs.getLayoutParams();
+            final LayoutParams rlp = (LayoutParams) rhs.getLayoutParams();
             if (llp.isDecor != rlp.isDecor) {
                 return llp.isDecor ? 1 : -1;
             }
             return llp.position - rlp.position;
         }
-    }
-
-    private OnPageChangeListener onPageChangeListener = new OnPageChangeListener() {
-        //mPreviousOffset必须保留,mPreviousOffset==0是防止首尾页切换时候界面闪动的关键
-//        private float mPreviousOffset = -1;
-        @Override
-        public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-            /*if(mInfiniteLoop){
-                int realPosition = position;
-                if(positionOffset == 0 && mPreviousOffset == 0 && (position == 0 || position == mAdapter.getCount() - 1)){
-                    realPosition = ((LoopPagerAdapterWrapper)mAdapter).toRealPosition(position);
-                    int realItem = ((LoopPagerAdapterWrapper)mAdapter).toInnerPosition(realPosition);
-                    Log.e("Jet","onPageScrolled:setCurrentItem:"+realItem);
-                    setCurrentItem(realItem,false);
-                    if(mScrollMode == ScrollMode.VERTICAL){
-                        Object item = mAdapter.instantiateItem(CoolViewPager.this,realItem);
-                        if(item instanceof View){
-                            View currView = (View) item;
-                            currView.setTranslationX(0f);
-                            currView.setTranslationY(0f);
-                        }
-                    }
-                }
-                mPreviousOffset = positionOffset;
-            }*/
-        }
-
-        @Override
-        public void onPageScrollStateChanged(int state) {
-            if (mInfiniteLoop) {
-                int position = getCurrentItem();
-                if (state == SCROLL_STATE_IDLE && (position == 0 || position == mAdapter.getCount() - 1)) {
-                    int realPosition = ((LoopPagerAdapterWrapper) mAdapter).toRealPosition(position);
-                    int realItem = ((LoopPagerAdapterWrapper) mAdapter).toInnerPosition(realPosition);
-//                    Log.e("Jet","onPageScrollStateChanged:setCurrentItem:"+realItem);
-                    setCurrentItem(realItem, false);
-                    if (mScrollMode == ScrollMode.VERTICAL) {
-                        Object item = mAdapter.instantiateItem(CoolViewPager.this, realItem);
-                        if (item instanceof View) {
-                            View currView = (View) item;
-                            currView.setTranslationX(0f);
-                            currView.setTranslationY(0f);
-                        }
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void onPageSelected(int position) {
-//            Log.e("Jet","onPageSelected");
-        }
-    };
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (timer != null) {
-            final int action = ev.getAction();
-            if (action == MotionEvent.ACTION_DOWN) {
-                stopTimer();
-            }
-            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                checkAndStartTimer();
-            }
-        }
-        return super.dispatchTouchEvent(ev);
-    }
-
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        mFirstLayout = true;
-        checkAndStartTimer();
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        removeCallbacks(mEndScrollRunnable);
-        // To be on the safe side, abort the scroller
-        if ((mScroller != null) && !mScroller.isFinished()) {
-            mScroller.abortAnimation();
-        }
-        super.onDetachedFromWindow();
-        stopTimer();
-    }
-
-    @Override
-    protected void onVisibilityChanged(@NonNull View changedView, int visibility) {
-        super.onVisibilityChanged(changedView, visibility);
-        if (visibility == VISIBLE) {
-            checkAndStartTimer();
-        } else {
-            stopTimer();
-        }
-    }
-
-    @Override
-    public void onStartTemporaryDetach() {
-        super.onStartTemporaryDetach();
-        stopTimer();
-    }
-
-    @Override
-    public void onFinishTemporaryDetach() {
-        super.onFinishTemporaryDetach();
-        checkAndStartTimer();
     }
 }

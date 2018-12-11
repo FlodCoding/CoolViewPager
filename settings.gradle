@@ -1,1 +1,1 @@
-include ':app', ':coolviewpager'
+include ':app', ':coolviewpager', ':HardViewPager'
