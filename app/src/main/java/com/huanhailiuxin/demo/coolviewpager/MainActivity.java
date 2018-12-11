@@ -41,4 +41,8 @@ public class MainActivity extends AppCompatActivity {
     public void compareWithSupport(View view) {
         startActivity(new Intent(MainActivity.this,SupportViewPagerActivity.class));
     }
+
+    public void forTest(View view){
+        startActivity(new Intent(MainActivity.this,ForTestActivity.class));
+    }
 }

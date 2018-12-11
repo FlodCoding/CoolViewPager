@@ -43,4 +43,11 @@
         android:text="对比support中ViewPager看性能"
         android:onClick="compareWithSupport"
         />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="测试源码啦"
+        android:onClick="forTest"
+        />
 </LinearLayout>

@@ -27,4 +27,5 @@ dependencies {
 //    implementation 'com.huanhailiuxin.view:coolviewpager:1.0.0'
     //implementation 'com.github.HuanHaiLiuXin:CoolViewPager:v1.0.0'
     api project(':coolviewpager')
+    api project(':HardViewPager')
 }

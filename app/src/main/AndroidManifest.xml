@@ -32,6 +32,7 @@
             <!-- <action android:name="cat.ereza.customactivityoncrash.ERROR" /> -->
             <!-- </intent-filter> -->
         </activity>
+        <activity android:name=".ForTestActivity" />
     </application>
 
 </manifest>
