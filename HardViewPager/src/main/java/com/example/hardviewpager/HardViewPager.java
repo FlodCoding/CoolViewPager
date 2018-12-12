@@ -624,6 +624,10 @@ public class HardViewPager extends ViewGroup {
         return getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
     }
 
+    private int getClientHeight() {
+        return getMeasuredHeight() - getPaddingTop() - getPaddingBottom();
+    }
+
     /**
      * Set the currently selected page. If the ViewPager has already been through its first
      * layout with its current adapter there will be a smooth animated transition between
@@ -1829,8 +1833,8 @@ public class HardViewPager extends ViewGroup {
             }
         }
 
+        /*滑动方向是水平*/
         if (mOrientation == Orientation.HORIZONTAL) {
-            //子页面的宽度
             final int childWidth = width - paddingLeft - paddingRight;
             // Page views. Do this once we have the right padding offsets from above.
             for (int i = 0; i < count; i++) {
@@ -1867,8 +1871,9 @@ public class HardViewPager extends ViewGroup {
                     }
                 }
             }
+
+            //滑动方向是垂直
         } else {
-            //子页面的高度
             final int childHeight = height - paddingTop - paddingBottom;
             for (int i = 0; i < count; i++) {
                 final View child = getChildAt(i);
@@ -1935,12 +1940,20 @@ public class HardViewPager extends ViewGroup {
 
             if (oldX != x || oldY != y) {
                 scrollTo(x, y);
-                //确保mScroller还没结束滑动，并开始计算滑动位置
-                if (!pageScrolled(x)) {
-                    //如果没有子页面中断动画并且滑动到x=0位置，但是y保持滑动
-                    mScroller.abortAnimation();
-                    scrollTo(0, y);
+                if (mOrientation == Orientation.HORIZONTAL) {
+                    //确保mScroller还没结束滑动，并开始计算滑动位置
+                    if (!pageScrolled(x)) {
+                        //如果没有子页面中断动画并且滑动到x=0位置，但是y保持滑动
+                        mScroller.abortAnimation();
+                        scrollTo(0, y);
+                    }
+                } else {
+                    if (!pageScrolled(y)) {
+                        mScroller.abortAnimation();
+                        scrollTo(x, 0);
+                    }
                 }
+
             }
 
             // Keep on drawing until the animation has finished.
@@ -1953,7 +1966,7 @@ public class HardViewPager extends ViewGroup {
         completeScroll(true);
     }
 
-    private boolean pageScrolled(int xpos) {
+    private boolean pageScrolled(int xypos) {
         if (mItems.size() == 0) {
             if (mFirstLayout) {
                 // If we haven't been laid out yet, we probably just haven't been populated yet.
@@ -1969,21 +1982,37 @@ public class HardViewPager extends ViewGroup {
             return false;
         }
         final ItemInfo ii = infoForCurrentScrollPosition();
-        // 获取显示区域的宽度
-        final int width = getClientWidth();
-        //加上外边距后的宽度
-        final int widthWithMargin = width + mPageMargin;
-        final float marginOffset = (float) mPageMargin / width;
-        //当前是第几个页面
-        final int currentPage = ii.position;
-        //计算当前页面的偏移量 [0,1) 如果pageOffset不等于0，则下个页面可见
-        final float pageOffset = (((float) xpos / width) - ii.offset)
-                / (ii.widthFactor + marginOffset);
-        //当前页面移动的像素点个数
-        final int offsetPixels = (int) (pageOffset * widthWithMargin);
+        if (mOrientation == Orientation.HORIZONTAL){
+            // 获取显示区域的宽度
+            final int width = getClientWidth();
+            //加上外边距后的宽度
+            final int widthWithMargin = width + mPageMargin;
+            final float marginOffset = (float) mPageMargin / width;
+            //当前是第几个页面
+            final int currentPage = ii.position;
+            //计算当前页面的偏移量 [0,1) 如果pageOffset不等于0，则下个页面可见
+            final float pageOffset = (((float) xypos / width) - ii.offset)
+                    / (ii.widthFactor + marginOffset);
+            final int offsetPixels = (int) (pageOffset * widthWithMargin);
+            mCalledSuper = false;
+            onPageScrolled(currentPage, pageOffset, offsetPixels);
+        }else {
+            // 获取显示区域的宽度
+            final int height = getClientHeight();
+            //加上外边距后的宽度
+            final int heightWithMargin = height + mPageMargin;
+            final float marginOffset = (float) mPageMargin / height;
+            //当前是第几个页面
+            final int currentPage = ii.position;
+            //计算当前页面的偏移量 [0,1) 如果pageOffset不等于0，则下个页面可见
+            final float pageOffset = (((float) xypos / height) - ii.offset)
+                    / (ii.widthFactor + marginOffset);
+            final int offsetPixels = (int) (pageOffset * heightWithMargin);
+            mCalledSuper = false;
+            onPageScrolled(currentPage, pageOffset, offsetPixels);
+        }
 
-        mCalledSuper = false;
-        onPageScrolled(currentPage, pageOffset, offsetPixels);
+
         if (!mCalledSuper) {
             throw new IllegalStateException(
                     "onPageScrolled did not call superclass implementation");
