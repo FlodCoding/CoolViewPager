@@ -1949,12 +1949,15 @@ public class ViewPager extends ViewGroup {
     @CallSuper
     protected void onPageScrolled(int position, float offset, int offsetPixels) {
         // Offset any decor views if needed - keep them on-screen at all times.
+
+        //TODO 处理DecorView 原理不明白
         if (mDecorChildCount > 0) {
             final int scrollX = getScrollX();
             int paddingLeft = getPaddingLeft();
             int paddingRight = getPaddingRight();
             final int width = getWidth();
             final int childCount = getChildCount();
+
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
                 final LayoutParams lp = (LayoutParams) child.getLayoutParams();
