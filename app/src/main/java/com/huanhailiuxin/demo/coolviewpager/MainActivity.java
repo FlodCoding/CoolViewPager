@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void changeOrientation(View view) {
-        startActivity(new Intent(MainActivity.this, ActivityOrientation.class));
+        startActivity(new Intent(MainActivity.this, ActivityOrientation2.class));
     }
 
     public void changeEdgeEffectColor(View view) {

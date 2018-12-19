@@ -200,7 +200,7 @@ public class HardViewPager extends ViewGroup {
     private int mOffscreenPageLimit = DEFAULT_OFFSCREEN_PAGES;
 
     private boolean mIsBeingDragged;
-    private boolean mIsUnableToDrag;
+    private boolean mIsUnableToDrag; //判定当前的手指的Move动作是否有效
     private int mDefaultGutterSize;
     private int mGutterSize;
     private int mTouchSlop;//系统所能识别的最小滑动距离
@@ -701,26 +701,53 @@ public class HardViewPager extends ViewGroup {
 
     private void scrollToItem(int item, boolean smoothScroll, int velocity,
                               boolean dispatchSelected) {
-        final ItemInfo curInfo = infoForPosition(item);
-        int destX = 0;
-        if (curInfo != null) {
-            final int width = getClientWidth();
-            destX = (int) (width * Math.max(mFirstOffset,
-                    Math.min(curInfo.offset, mLastOffset)));
-        }
-        if (smoothScroll) {
-            smoothScrollTo(destX, 0, velocity);
-            if (dispatchSelected) {
-                dispatchOnPageSelected(item);
+
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            final ItemInfo curInfo = infoForPosition(item);
+            int destX = 0;
+            if (curInfo != null) {
+                final int width = getClientWidth();
+                destX = (int) (width * Math.max(mFirstOffset,
+                        Math.min(curInfo.offset, mLastOffset)));
+            }
+            if (smoothScroll) {
+                smoothScrollTo(destX, 0, velocity);
+                if (dispatchSelected) {
+                    dispatchOnPageSelected(item);
+                }
+            } else {
+                if (dispatchSelected) {
+                    dispatchOnPageSelected(item);
+                }
+                completeScroll(false);
+                scrollTo(destX, 0);
+                pageScrolled(destX);
             }
         } else {
-            if (dispatchSelected) {
-                dispatchOnPageSelected(item);
+            /*************方向是垂直********************/
+            final ItemInfo curInfo = infoForPosition(item);
+            int destY = 0;
+            if (curInfo != null) {
+                final int height = getClientHeight();
+                destY = (int) (height * Math.max(mFirstOffset,
+                        Math.min(curInfo.offset, mLastOffset)));
             }
-            completeScroll(false);
-            scrollTo(destX, 0);
-            pageScrolled(destX);
+            if (smoothScroll) {
+                smoothScrollTo(0, destY, velocity);
+                if (dispatchSelected) {
+                    dispatchOnPageSelected(item);
+                }
+            } else {
+                if (dispatchSelected) {
+                    dispatchOnPageSelected(item);
+                }
+                completeScroll(false);
+                scrollTo(0, destY);
+                pageScrolled(destY);
+            }
         }
+
     }
 
     /**
@@ -980,60 +1007,120 @@ public class HardViewPager extends ViewGroup {
             return;
         }
 
-        int sx;
+        int sxy;
         boolean wasScrolling = (mScroller != null) && !mScroller.isFinished();
-        if (wasScrolling) {
-            // We're in the middle of a previously initiated scrolling. Check to see
-            // whether that scrolling has actually started (if we always call getStartX
-            // we can get a stale value from the scroller if it hadn't yet had its first
-            // computeScrollOffset call) to decide what is the current scrolling position.
-            sx = mIsScrollStarted ? mScroller.getCurrX() : mScroller.getStartX();
-            // And abort the current scrolling.
-            mScroller.abortAnimation();
-            setScrollingCacheEnabled(false);
+
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            if (wasScrolling) {
+                // We're in the middle of a previously initiated scrolling. Check to see
+                // whether that scrolling has actually started (if we always call getStartX
+                // we can get a stale value from the scroller if it hadn't yet had its first
+                // computeScrollOffset call) to decide what is the current scrolling position.
+                sxy = mIsScrollStarted ? mScroller.getCurrX() : mScroller.getStartX();
+                // And abort the current scrolling.
+                mScroller.abortAnimation();
+                setScrollingCacheEnabled(false);
+            } else {
+                sxy = getScrollX();
+            }
+            int sy = getScrollY();
+            int dx = x - sxy;
+            int dy = y - sy;
+            if (dx == 0 && dy == 0) {
+                completeScroll(false);
+                populate();
+                setScrollState(SCROLL_STATE_IDLE);
+                return;
+            }
+
+            setScrollingCacheEnabled(true);
+            setScrollState(SCROLL_STATE_SETTLING);
+
+            final int width = getClientWidth();
+            final int halfWidth = width / 2;
+
+            //滑动距离占宽度的比例
+            final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dx) / width);
+            //进行变速
+            final float distance = halfWidth + halfWidth
+                    * distanceInfluenceForSnapDuration(distanceRatio);
+
+            int duration;
+            velocity = Math.abs(velocity);
+            if (velocity > 0) {
+                //推算出需要滑动的时间：4倍的手指滑动时间
+                duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
+            } else {
+                //如果手指滑动速度0，就自己推算滑动时间
+                final float pageWidth = width * mAdapter.getPageWidth(mCurItem);
+                final float pageDelta = (float) Math.abs(dx) / (pageWidth + mPageMargin);
+                duration = (int) ((pageDelta + 1) * 100);
+            }
+            //未设置过,则采用原始逻辑获取duration
+            duration = Math.min(duration, MAX_SETTLE_DURATION);
+
+            // Reset the "scroll started" flag. It will be flipped to true in all places
+            // where we call computeScrollOffset().
+            mIsScrollStarted = false;
+            mScroller.startScroll(sxy, sy, dx, dy, duration);
         } else {
-            sx = getScrollX();
+            /*************方向是垂直********************/
+            if (wasScrolling) {
+                // We're in the middle of a previously initiated scrolling. Check to see
+                // whether that scrolling has actually started (if we always call getStartX
+                // we can get a stale value from the scroller if it hadn't yet had its first
+                // computeScrollOffset call) to decide what is the current scrolling position.
+                sxy = mIsScrollStarted ? mScroller.getCurrY() : mScroller.getStartY();
+                // And abort the current scrolling.
+                mScroller.abortAnimation();
+                setScrollingCacheEnabled(false);
+            } else {
+                sxy = getScrollY();
+            }
+            int sx = getScrollX();
+            int dx = x - sx;
+            int dy = y - sxy;
+            if (dx == 0 && dy == 0) {
+                completeScroll(false);
+                populate();
+                setScrollState(SCROLL_STATE_IDLE);
+                return;
+            }
+
+            setScrollingCacheEnabled(true);
+            setScrollState(SCROLL_STATE_SETTLING);
+
+            final int height = getClientHeight();
+            final int halfHeight = height / 2;
+
+            //滑动距离占宽度的比例
+            final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dy) / height);
+            //进行变速
+            final float distance = halfHeight + halfHeight
+                    * distanceInfluenceForSnapDuration(distanceRatio);
+
+            int duration;
+            velocity = Math.abs(velocity);
+            if (velocity > 0) {
+                //推算出需要滑动的时间：4倍的手指滑动时间
+                duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
+            } else {
+                //如果手指滑动速度0，就自己推算滑动时间
+                final float pageHeight = height * mAdapter.getPageWidth(mCurItem);
+                final float pageDelta = (float) Math.abs(dx) / (pageHeight + mPageMargin);
+                duration = (int) ((pageDelta + 1) * 100);
+            }
+            //未设置过,则采用原始逻辑获取duration
+            duration = Math.min(duration, MAX_SETTLE_DURATION);
+
+            // Reset the "scroll started" flag. It will be flipped to true in all places
+            // where we call computeScrollOffset().
+            mIsScrollStarted = false;
+            mScroller.startScroll(sx, sxy, dx, dy, duration);
+
         }
-        int sy = getScrollY();
-        int dx = x - sx;
-        int dy = y - sy;
-        if (dx == 0 && dy == 0) {
-            completeScroll(false);
-            populate();
-            setScrollState(SCROLL_STATE_IDLE);
-            return;
-        }
 
-        setScrollingCacheEnabled(true);
-        setScrollState(SCROLL_STATE_SETTLING);
-
-        final int width = getClientWidth();
-        final int halfWidth = width / 2;
-
-        //滑动距离占宽度的比例
-        final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dx) / width);
-        //进行变速
-        final float distance = halfWidth + halfWidth
-                * distanceInfluenceForSnapDuration(distanceRatio);
-
-        int duration;
-        velocity = Math.abs(velocity);
-        if (velocity > 0) {
-            //推算出需要滑动的时间：4倍的手指滑动时间
-            duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
-        } else {
-            //如果手指滑动速度0，就自己推算滑动时间
-            final float pageWidth = width * mAdapter.getPageWidth(mCurItem);
-            final float pageDelta = (float) Math.abs(dx) / (pageWidth + mPageMargin);
-            duration = (int) ((pageDelta + 1) * 100);
-        }
-        //未设置过,则采用原始逻辑获取duration
-        duration = Math.min(duration, MAX_SETTLE_DURATION);
-
-        // Reset the "scroll started" flag. It will be flipped to true in all places
-        // where we call computeScrollOffset().
-        mIsScrollStarted = false;
-        mScroller.startScroll(sx, sy, dx, dy, duration);
         ViewCompat.postInvalidateOnAnimation(this);
     }
 
@@ -1639,7 +1726,6 @@ public class HardViewPager extends ViewGroup {
             final int maxGutterSize = measuredHeight / 10;
             mGutterSize = Math.min(maxGutterSize, mDefaultGutterSize);
         }
-
 
 
         // Children are just made to fill our space.
@@ -2366,7 +2452,7 @@ public class HardViewPager extends ViewGroup {
                         mIsBeingDragged = true;
                         requestParentDisallowInterceptTouchEvent(true);
                         setScrollState(SCROLL_STATE_DRAGGING);
-                        //保存当前的移动位置
+                        //TODO 为什么是这个值不知
                         mLastMotionX = dx > 0
                                 ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
                         mLastMotionY = y;
@@ -2444,8 +2530,6 @@ public class HardViewPager extends ViewGroup {
 
         } else {
             /*************方向是垂直********************/
-
-
             switch (action) {
 
                 //如果是手指移动，准备要开始拖拽页面了,TODO 调试的时候发现并没有进入到这里。。。
@@ -2479,7 +2563,7 @@ public class HardViewPager extends ViewGroup {
 
                     //手指不在页面之间的边缘且页面可以滑动
                     if (dy != 0 && !isGutterDrag(mLastMotionY, dy)
-                            && canScroll(this, false, (int) dx, (int) x, (int) y)) {
+                            && canScroll(this, false, (int) dy, (int) x, (int) y)) {
                         // Nested view has scrollable area under this point. Let it be handled there.
                         //更新x,y的移动坐标
                         mLastMotionX = x;
@@ -2488,28 +2572,28 @@ public class HardViewPager extends ViewGroup {
                         mIsUnableToDrag = true;
                         return false;
                     }
-                    //x移动的距离大于最小距离，且斜率小于0.5，则认为是水平方向上的移动
-                    if (xDiff > mTouchSlop && xDiff * 0.5f > yDiff) {
+                    //y移动的距离大于最小距离，且斜率大于0.5，则认为是垂直方向上的移动
+                    if (yDiff > mTouchSlop && xDiff * 0.5f < yDiff) {
                         if (DEBUG) Log.v(TAG, "Starting drag!");
                         mIsBeingDragged = true;
                         requestParentDisallowInterceptTouchEvent(true);
                         setScrollState(SCROLL_STATE_DRAGGING);
                         //保存当前的移动位置
-                        mLastMotionX = dx > 0
-                                ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
-                        mLastMotionY = y;
+                        mLastMotionX = x;
+                        mLastMotionY = dy > 0 ? mInitialMotionY + mTouchSlop : mInitialMotionY - mTouchSlop;
                         setScrollingCacheEnabled(true);
-                    } else if (yDiff > mTouchSlop) {
+                    } else if (xDiff > mTouchSlop) {
                         // The finger has moved enough in the vertical
                         // direction to be counted as a drag...  abort
                         // any attempt to drag horizontally, to work correctly
                         // with children that have scrolling containers.
                         if (DEBUG) Log.v(TAG, "Starting unable to drag!");
+                        //提前结束Move 动作，后面的move动作都屏蔽
                         mIsUnableToDrag = true;
                     }
                     if (mIsBeingDragged) {
                         // Scroll to follow the motion event
-                        if (performDrag(x)) {
+                        if (performDrag(y)) {
                             ViewCompat.postInvalidateOnAnimation(this);
                         }
                     }
@@ -2536,7 +2620,7 @@ public class HardViewPager extends ViewGroup {
                     //如果此时按下，且页面正在放到最终位置
                     //且当前位置距离最终位置足够远
                     if (mScrollState == SCROLL_STATE_SETTLING
-                            && Math.abs(mScroller.getFinalX() - mScroller.getCurrX()) > mCloseEnough) {
+                            && Math.abs(mScroller.getFinalY() - mScroller.getCurrY()) > mCloseEnough) {
                         // Let the user 'catch' the pager as it animates.
 
                         // 需要停止当前的滑动动画，然后暂停滑动
@@ -2638,56 +2722,116 @@ public class HardViewPager extends ViewGroup {
             }
             //已经按下并滑动
             case MotionEvent.ACTION_MOVE:
-                //当前没有正在拖动
-                if (!mIsBeingDragged) {
-                    final int pointerIndex = ev.findPointerIndex(mActivePointerId);
-                    //找不到这个手指索引（有其他的子视图可能已经消费了这个事件）
-                    if (pointerIndex == -1) {
-                        // A child has consumed some touch events and put us into an inconsistent
-                        // state.
-                        //重置一些与滑动相关的参数，如果是滑动到边缘就释放边界动画，并且需要再绘制
-                        needsInvalidate = resetTouch();
-                        break;
-                    }
-                    final float x = ev.getX(pointerIndex);
-                    final float xDiff = Math.abs(x - mLastMotionX);
-                    final float y = ev.getY(pointerIndex);
-                    final float yDiff = Math.abs(y - mLastMotionY);
-                    if (DEBUG) {
-                        Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
-                    }
 
-                    //如果滑动的斜率小于1
-                    if (xDiff > mTouchSlop && xDiff > yDiff) {
-                        if (DEBUG) Log.v(TAG, "Starting drag!");
-                        mIsBeingDragged = true;
-                        //开始滑动了
-                        requestParentDisallowInterceptTouchEvent(true);
-                        //最新x坐标设置为初始值加减mTouchSlop这个裕量，保证达到滑动的条件
-                        mLastMotionX = x - mInitialMotionX > 0 ? mInitialMotionX + mTouchSlop :
-                                mInitialMotionX - mTouchSlop;
-                        mLastMotionY = y;
-                        //设置滑动的状态为：正在拖拽
-                        setScrollState(SCROLL_STATE_DRAGGING);
-                        //打开draw的缓存，这个一直是关闭的
-                        setScrollingCacheEnabled(true);
+                /*************方向是水平********************/
+                if (mOrientation == Orientation.HORIZONTAL) {
+                    //当前没有正在拖动
+                    if (!mIsBeingDragged) {
+                        final int pointerIndex = ev.findPointerIndex(mActivePointerId);
+                        //找不到这个手指索引（有其他的子视图可能已经消费了这个事件）
+                        if (pointerIndex == -1) {
+                            // A child has consumed some touch events and put us into an inconsistent
+                            // state.
+                            //重置一些与滑动相关的参数，如果是滑动到边缘就释放边界动画，并且需要再绘制
+                            needsInvalidate = resetTouch();
+                            break;
+                        }
+                        final float x = ev.getX(pointerIndex);
+                        final float xDiff = Math.abs(x - mLastMotionX);
+                        final float y = ev.getY(pointerIndex);
+                        final float yDiff = Math.abs(y - mLastMotionY);
+                        if (DEBUG) {
+                            Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
+                        }
 
-                        // Disallow Parent Intercept, just in case
-                        //关闭父布局的触摸拦截
-                        ViewParent parent = getParent();
-                        if (parent != null) {
-                            parent.requestDisallowInterceptTouchEvent(true);
+                        //如果滑动的斜率小于1
+                        if (xDiff > mTouchSlop && xDiff > yDiff) {
+                            if (DEBUG) Log.v(TAG, "Starting drag!");
+                            mIsBeingDragged = true;
+                            //开始滑动了
+                            requestParentDisallowInterceptTouchEvent(true);
+                            //最新x坐标设置为初始值加减mTouchSlop这个裕量，保证达到滑动的条件
+                            mLastMotionX = x - mInitialMotionX > 0 ? mInitialMotionX + mTouchSlop :
+                                    mInitialMotionX - mTouchSlop;
+                            mLastMotionY = y;
+                            //设置滑动的状态为：正在拖拽
+                            setScrollState(SCROLL_STATE_DRAGGING);
+                            //打开draw的缓存，这个一直是关闭的
+                            setScrollingCacheEnabled(true);
+
+                            // Disallow Parent Intercept, just in case
+                            //关闭父布局的触摸拦截
+                            ViewParent parent = getParent();
+                            if (parent != null) {
+                                parent.requestDisallowInterceptTouchEvent(true);
+                            }
                         }
                     }
+                    // Not else! Note that mIsBeingDragged can be set above.
+                    // 当前正在滑动，执行滑动
+                    if (mIsBeingDragged) {
+                        // Scroll to follow the motion event
+                        final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+                        final float x = ev.getX(activePointerIndex);
+                        needsInvalidate |= performDrag(x);
+                    }
+                } else {
+                    /*************方向是垂直********************/
+
+                    //当前没有正在拖动
+                    if (!mIsBeingDragged) {
+                        final int pointerIndex = ev.findPointerIndex(mActivePointerId);
+                        //找不到这个手指索引（有其他的子视图可能已经消费了这个事件）
+                        if (pointerIndex == -1) {
+                            // A child has consumed some touch events and put us into an inconsistent
+                            // state.
+                            //重置一些与滑动相关的参数，如果是滑动到边缘就释放边界动画，并且需要再绘制
+                            needsInvalidate = resetTouch();
+                            break;
+                        }
+                        final float x = ev.getX(pointerIndex);
+                        final float xDiff = Math.abs(x - mLastMotionX);
+                        final float y = ev.getY(pointerIndex);
+                        final float yDiff = Math.abs(y - mLastMotionY);
+                        if (DEBUG) {
+                            Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
+                        }
+
+                        //如果滑动的斜率小于1
+                        if (yDiff > mTouchSlop && xDiff < yDiff) {
+                            if (DEBUG) Log.v(TAG, "Starting drag!");
+                            mIsBeingDragged = true;
+                            //开始滑动了
+                            requestParentDisallowInterceptTouchEvent(true);
+                            //最新x坐标设置为初始值加减mTouchSlop这个裕量，保证达到滑动的条件
+                            mLastMotionX = x;
+                            mLastMotionY = y - mInitialMotionY > 0 ? mInitialMotionY + mTouchSlop :
+                                    mInitialMotionY - mTouchSlop;
+                            //设置滑动的状态为：正在拖拽
+                            setScrollState(SCROLL_STATE_DRAGGING);
+                            //打开draw的缓存，这个一直是关闭的
+                            setScrollingCacheEnabled(true);
+
+                            // Disallow Parent Intercept, just in case
+                            //关闭父布局的触摸拦截
+                            ViewParent parent = getParent();
+                            if (parent != null) {
+                                parent.requestDisallowInterceptTouchEvent(true);
+                            }
+                        }
+                    }
+                    // Not else! Note that mIsBeingDragged can be set above.
+                    // 当前正在滑动，执行滑动
+                    if (mIsBeingDragged) {
+                        // Scroll to follow the motion event
+                        final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+                        final float y = ev.getY(activePointerIndex);
+                        needsInvalidate |= performDrag(y);
+                    }
+
                 }
-                // Not else! Note that mIsBeingDragged can be set above.
-                // 当前正在滑动，执行滑动
-                if (mIsBeingDragged) {
-                    // Scroll to follow the motion event
-                    final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
-                    final float x = ev.getX(activePointerIndex);
-                    needsInvalidate |= performDrag(x);
-                }
+
+
                 break;
 
             //手指抬起
@@ -2701,23 +2845,48 @@ public class HardViewPager extends ViewGroup {
                     //拿到x的速度
                     int initialVelocity = (int) velocityTracker.getXVelocity(mActivePointerId);
                     mPopulatePending = true;
-                    // 获得当前视图的实际宽度和滑动到x的终点值
-                    final int width = getClientWidth();
-                    final int scrollX = getScrollX();
-                    //拿到当前的ItemInfo
-                    final ItemInfo ii = infoForCurrentScrollPosition();
-                    final float marginOffset = (float) mPageMargin / width;
-                    final int currentPage = ii.position;
-                    final float pageOffset = (((float) scrollX / width) - ii.offset)
-                            / (ii.widthFactor + marginOffset);
-                    final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
-                    final float x = ev.getX(activePointerIndex);
-                    final int totalDelta = (int) (x - mInitialMotionX);
-                    //算出下一个页面应该是哪个？
-                    int nextPage = determineTargetPage(currentPage, pageOffset, initialVelocity,
-                            totalDelta);
-                    //设置到当前页面
-                    setCurrentItemInternal(nextPage, true, true, initialVelocity);
+
+                    /*************方向是水平********************/
+                    if (mOrientation == Orientation.HORIZONTAL) {
+                        // 获得当前视图的实际宽度和滑动到x的终点值
+                        final int width = getClientWidth();
+                        final int scrollX = getScrollX();
+                        //拿到当前的ItemInfo
+                        final ItemInfo ii = infoForCurrentScrollPosition();
+                        final float marginOffset = (float) mPageMargin / width;
+                        final int currentPage = ii.position;
+                        final float pageOffset = (((float) scrollX / width) - ii.offset)
+                                / (ii.widthFactor + marginOffset);
+                        final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+                        final float x = ev.getX(activePointerIndex);
+                        final int totalDelta = (int) (x - mInitialMotionX);
+                        //算出下一个页面应该是哪个？
+                        int nextPage = determineTargetPage(currentPage, pageOffset, initialVelocity,
+                                totalDelta);
+                        //设置到当前页面
+                        setCurrentItemInternal(nextPage, true, true, initialVelocity);
+                    } else {
+                        /*************方向是垂直********************/
+
+                        // 获得当前视图的实际宽度和滑动到y的终点值
+                        final int height = getClientHeight();
+                        final int scrollY = getScrollY();
+                        //拿到当前的ItemInfo
+                        final ItemInfo ii = infoForCurrentScrollPosition();
+                        final float marginOffset = (float) mPageMargin / height;
+                        final int currentPage = ii.position;
+                        final float pageOffset = (((float) scrollY / height) - ii.offset)
+                                / (ii.widthFactor + marginOffset);
+                        final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+                        final float y = ev.getY(activePointerIndex);
+                        final int totalDelta = (int) (y - mInitialMotionY);
+                        //算出下一个页面应该是哪个？
+                        int nextPage = determineTargetPage(currentPage, pageOffset, initialVelocity,
+                                totalDelta);
+                        //设置到当前页面
+                        setCurrentItemInternal(nextPage, true, true, initialVelocity);
+                    }
+
 
                     needsInvalidate = resetTouch();
                 }
@@ -2731,14 +2900,30 @@ public class HardViewPager extends ViewGroup {
             //手指按下，记录坐标和当前活动的手指Id
             case MotionEvent.ACTION_POINTER_DOWN: {
                 final int index = ev.getActionIndex();
-                final float x = ev.getX(index);
-                mLastMotionX = x;
-                mActivePointerId = ev.getPointerId(index);
+                /*************方向是水平********************/
+                if (mOrientation == Orientation.HORIZONTAL) {
+                    final float x = ev.getX(index);
+                    mLastMotionX = x;
+                    mActivePointerId = ev.getPointerId(index);
+                } else {
+                    /*************方向是垂直********************/
+                    final float y = ev.getY(index);
+                    mLastMotionY = y;
+                    mActivePointerId = ev.getPointerId(index);
+                }
+
                 break;
             }
             case MotionEvent.ACTION_POINTER_UP:
                 onSecondaryPointerUp(ev);
-                mLastMotionX = ev.getX(ev.findPointerIndex(mActivePointerId));
+
+                /*************方向是水平********************/
+                if (mOrientation == Orientation.HORIZONTAL) {
+                    mLastMotionX = ev.getX(ev.findPointerIndex(mActivePointerId));
+                } else {
+                    /*************方向是垂直********************/
+                    mLastMotionY = ev.getY(ev.findPointerIndex(mActivePointerId));
+                }
                 break;
         }
         if (needsInvalidate) {
@@ -2764,59 +2949,112 @@ public class HardViewPager extends ViewGroup {
         }
     }
 
-    private boolean performDrag(float x) {
+    private boolean performDrag(float xy) {
         boolean needsInvalidate = false;
 
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            final float deltaX = mLastMotionX - xy;  //拿到拖动的偏移量
+            mLastMotionX = xy;                       //更新最新的x坐标
 
-        final float deltaX = mLastMotionX - x;  //拿到拖动的偏移量
-        mLastMotionX = x;                       //更新最新的x坐标
+            //将旧的滑动目标X加上偏移，就是新的滑动目标
+            float oldScrollX = getScrollX();
+            float scrollX = oldScrollX + deltaX;
+            final int width = getClientWidth();
 
-        //将旧的滑动目标X加上偏移，就是新的滑动目标
-        float oldScrollX = getScrollX();
-        float scrollX = oldScrollX + deltaX;
-        final int width = getClientWidth();
+            float leftBound = width * mFirstOffset; //页面卷左测距离原点的距离
+            float rightBound = width * mLastOffset; //页面卷右侧距离原点的距离
+            boolean leftAbsolute = true;            //是否到达左侧边界
+            boolean rightAbsolute = true;           //是否到达右侧边界
 
-        float leftBound = width * mFirstOffset; //页面卷左测距离原点的距离
-        float rightBound = width * mLastOffset; //页面卷右侧距离原点的距离
-        boolean leftAbsolute = true;            //是否到达左侧边界
-        boolean rightAbsolute = true;           //是否到达右侧边界
-
-        //拿到页卷的首个和最后一个
-        final ItemInfo firstItem = mItems.get(0);
-        final ItemInfo lastItem = mItems.get(mItems.size() - 1);
-        //如果页卷还没有到达左边界，那需要算出页卷的左侧距离原点的距离；
-        if (firstItem.position != 0) {
-            leftAbsolute = false;
-            leftBound = firstItem.offset * width;
-        }
-        //页卷右侧同理
-        if (lastItem.position != mAdapter.getCount() - 1) {
-            rightAbsolute = false;
-            rightBound = lastItem.offset * width;
-        }
-
-        //如果滑动到达边界，那需要执行边界禁止滑动效果
-        if (scrollX < leftBound) {
-            if (leftAbsolute) {
-                float over = leftBound - scrollX;
-                mLeftEdge.onPull(Math.abs(over) / width);
-                needsInvalidate = true;
+            //拿到页卷的首个和最后一个
+            final ItemInfo firstItem = mItems.get(0);
+            final ItemInfo lastItem = mItems.get(mItems.size() - 1);
+            //如果页卷还没有到达左边界，那需要算出页卷的左侧距离原点的距离；
+            if (firstItem.position != 0) {
+                leftAbsolute = false;
+                leftBound = firstItem.offset * width;
             }
-            scrollX = leftBound;
-        } else if (scrollX > rightBound) {
-            if (rightAbsolute) {
-                float over = scrollX - rightBound;
-                mRightEdge.onPull(Math.abs(over) / width);
-                needsInvalidate = true;
+            //页卷右侧同理
+            if (lastItem.position != mAdapter.getCount() - 1) {
+                rightAbsolute = false;
+                rightBound = lastItem.offset * width;
             }
-            scrollX = rightBound;
+
+            //如果滑动到达边界，那需要执行边界禁止滑动效果
+            if (scrollX < leftBound) {
+                if (leftAbsolute) {
+                    float over = leftBound - scrollX;
+                    mLeftEdge.onPull(Math.abs(over) / width);
+                    needsInvalidate = true;
+                }
+                scrollX = leftBound;
+            } else if (scrollX > rightBound) {
+                if (rightAbsolute) {
+                    float over = scrollX - rightBound;
+                    mRightEdge.onPull(Math.abs(over) / width);
+                    needsInvalidate = true;
+                }
+                scrollX = rightBound;
+            }
+            // Don't lose the rounded component
+            //把scrollX小数加到mLastMotionX 不清楚这么做的意义
+            mLastMotionX += scrollX - (int) scrollX;
+            //执行滑动
+            scrollTo((int) scrollX, getScrollY());
+            pageScrolled((int) scrollX);
+        } else {
+            /*************方向是垂直********************/
+            final float deltaY = mLastMotionY - xy;  //拿到拖动的偏移量
+            mLastMotionY = xy;                       //更新最新的x坐标
+
+            //将旧的滑动目标Y加上偏移，就是新的滑动目标
+            float oldScrollY = getScrollY();
+            float scrollY = oldScrollY + deltaY;
+            final int height = getClientHeight();
+
+            float topBound = height * mFirstOffset; //页面卷上测距离原点的距离
+            float bottomBound = height * mLastOffset; //页面卷下侧距离原点的距离
+            boolean topAbsolute = true;            //是否到达上侧边界
+            boolean bottomAbsolute = true;           //是否到达下侧边界
+
+            //拿到页卷的首个和最后一个
+            final ItemInfo firstItem = mItems.get(0);
+            final ItemInfo lastItem = mItems.get(mItems.size() - 1);
+            //如果页卷还没有到达左边界，那需要算出页卷的左侧距离原点的距离；
+            if (firstItem.position != 0) {
+                topAbsolute = false;
+                topBound = firstItem.offset * height;
+            }
+            //页卷右侧同理
+            if (lastItem.position != mAdapter.getCount() - 1) {
+                bottomAbsolute = false;
+                bottomBound = lastItem.offset * height;
+            }
+
+            //如果滑动到达边界，那需要执行边界禁止滑动效果
+            if (scrollY < topBound) {
+                if (topAbsolute) {
+                    float over = topBound - scrollY;
+                    mLeftEdge.onPull(Math.abs(over) / height);
+                    needsInvalidate = true;
+                }
+                scrollY = topBound;
+            } else if (scrollY > bottomBound) {
+                if (bottomAbsolute) {
+                    float over = scrollY - bottomBound;
+                    mRightEdge.onPull(Math.abs(over) / height);
+                    needsInvalidate = true;
+                }
+                scrollY = bottomBound;
+            }
+            // Don't lose the rounded component
+            //把scrollX小数加到mLastMotionX 不清楚这么做的意义
+            mLastMotionY += scrollY - (int) scrollY;
+            //执行滑动
+            scrollTo( getScrollX(), (int)scrollY);
+            pageScrolled((int) scrollY);
         }
-        // Don't lose the rounded component
-        //把scrollX小数加到mLastMotionX 不清楚这么做的意义
-        mLastMotionX += scrollX - (int) scrollX;
-        //执行滑动
-        scrollTo((int) scrollX, getScrollY());
-        pageScrolled((int) scrollX);
 
         return needsInvalidate;
     }
@@ -2826,51 +3064,101 @@ public class HardViewPager extends ViewGroup {
      * This can be synthetic for a missing middle page; the 'object' field can be null.
      */
     private ItemInfo infoForCurrentScrollPosition() {
-        final int width = getClientWidth();
-        final float scrollOffset = width > 0 ? (float) getScrollX() / width : 0;
-        final float marginOffset = width > 0 ? (float) mPageMargin / width : 0;
-        int lastPos = -1;
-        float lastOffset = 0.f;
-        float lastWidth = 0.f;
-        boolean first = true;
 
-        ItemInfo lastItem = null;
-        for (int i = 0; i < mItems.size(); i++) {
-            ItemInfo ii = mItems.get(i);
-            float offset;
-            if (!first && ii.position != lastPos + 1) {
-                // Create a synthetic item for a missing page.
-                ii = mTempItem;
-                ii.offset = lastOffset + lastWidth + marginOffset;
-                ii.position = lastPos + 1;
-                ii.widthFactor = mAdapter.getPageWidth(ii.position);
-                i--;
-            }
-            offset = ii.offset;
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            final int width = getClientWidth();
+            final float scrollOffset = width > 0 ? (float) getScrollX() / width : 0;
+            final float marginOffset = width > 0 ? (float) mPageMargin / width : 0;
+            int lastPos = -1;
+            float lastOffset = 0.f;
+            float lastWidth = 0.f;
+            boolean first = true;
 
-            final float leftBound = offset;
-            final float rightBound = offset + ii.widthFactor + marginOffset;
-            if (first || scrollOffset >= leftBound) {
-                if (scrollOffset < rightBound || i == mItems.size() - 1) {
-                    return ii;
+            ItemInfo lastItem = null;
+            for (int i = 0; i < mItems.size(); i++) {
+                ItemInfo ii = mItems.get(i);
+                float offset;
+                if (!first && ii.position != lastPos + 1) {
+                    // Create a synthetic item for a missing page.
+                    ii = mTempItem;
+                    ii.offset = lastOffset + lastWidth + marginOffset;
+                    ii.position = lastPos + 1;
+                    ii.widthFactor = mAdapter.getPageWidth(ii.position);
+                    i--;
                 }
-            } else {
-                return lastItem;
+                offset = ii.offset;
+
+                final float leftBound = offset;
+                final float rightBound = offset + ii.widthFactor + marginOffset;
+                if (first || scrollOffset >= leftBound) {
+                    if (scrollOffset < rightBound || i == mItems.size() - 1) {
+                        return ii;
+                    }
+                } else {
+                    return lastItem;
+                }
+                first = false;
+                lastPos = ii.position;
+                lastOffset = offset;
+                lastWidth = ii.widthFactor;
+                lastItem = ii;
             }
-            first = false;
-            lastPos = ii.position;
-            lastOffset = offset;
-            lastWidth = ii.widthFactor;
-            lastItem = ii;
+
+            return lastItem;
+
+        } else {
+            /*************方向是垂直********************/
+
+            final int height = getClientHeight();
+            final float scrollOffset = height > 0 ? (float) getScrollY() / height : 0;
+            final float marginOffset = height > 0 ? (float) mPageMargin / height : 0;
+            int lastPos = -1;
+            float lastOffset = 0.f;
+            float lastHeight = 0.f;
+            boolean first = true;
+
+            ItemInfo lastItem = null;
+            for (int i = 0; i < mItems.size(); i++) {
+                ItemInfo ii = mItems.get(i);
+                float offset;
+                if (!first && ii.position != lastPos + 1) {
+                    // Create a synthetic item for a missing page.
+                    ii = mTempItem;
+                    ii.offset = lastOffset + lastHeight + marginOffset;
+                    ii.position = lastPos + 1;
+                    ii.widthFactor = mAdapter.getPageWidth(ii.position);
+                    i--;
+                }
+                offset = ii.offset;
+
+                final float topBound = offset;
+                final float bottomBound = offset + ii.widthFactor + marginOffset;
+                if (first || scrollOffset >= topBound) {
+                    if (scrollOffset < bottomBound || i == mItems.size() - 1) {
+                        return ii;
+                    }
+                } else {
+                    return lastItem;
+                }
+                first = false;
+                lastPos = ii.position;
+                lastOffset = offset;
+                lastHeight = ii.widthFactor;
+                lastItem = ii;
+            }
+
+            return lastItem;
+
         }
 
-        return lastItem;
+
     }
 
     //推算滑动后的页面是哪一个
-    private int determineTargetPage(int currentPage, float pageOffset, int velocity, int deltaX) {
+    private int determineTargetPage(int currentPage, float pageOffset, int velocity, int deltaXY) {
         int targetPage;
-        if (Math.abs(deltaX) > mFlingDistance && Math.abs(velocity) > mMinimumVelocity) {
+        if (Math.abs(deltaXY) > mFlingDistance && Math.abs(velocity) > mMinimumVelocity) {
             targetPage = velocity > 0 ? currentPage : currentPage + 1;
         } else {
             final float truncator = currentPage >= mCurItem ? 0.4f : 0.6f;
@@ -2935,45 +3223,94 @@ public class HardViewPager extends ViewGroup {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        // Draw the margin drawable between pages if needed.
-        if (mPageMargin > 0 && mMarginDrawable != null && mItems.size() > 0 && mAdapter != null) {
-            final int scrollX = getScrollX();
-            final int width = getWidth();
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
 
-            final float marginOffset = (float) mPageMargin / width;
-            int itemIndex = 0;
-            ItemInfo ii = mItems.get(0);
-            float offset = ii.offset;
-            final int itemCount = mItems.size();
-            final int firstPos = ii.position;
-            final int lastPos = mItems.get(itemCount - 1).position;
-            for (int pos = firstPos; pos < lastPos; pos++) {
-                while (pos > ii.position && itemIndex < itemCount) {
-                    ii = mItems.get(++itemIndex);
-                }
+            // Draw the margin drawable between pages if needed.
+            if (mPageMargin > 0 && mMarginDrawable != null && mItems.size() > 0 && mAdapter != null) {
+                final int scrollX = getScrollX();
+                final int width = getWidth();
 
-                float drawAt;
-                if (pos == ii.position) {
-                    drawAt = (ii.offset + ii.widthFactor) * width;
-                    offset = ii.offset + ii.widthFactor + marginOffset;
-                } else {
-                    float widthFactor = mAdapter.getPageWidth(pos);
-                    drawAt = (offset + widthFactor) * width;
-                    offset += widthFactor + marginOffset;
-                }
+                final float marginOffset = (float) mPageMargin / width;
+                int itemIndex = 0;
+                ItemInfo ii = mItems.get(0);
+                float offset = ii.offset;
+                final int itemCount = mItems.size();
+                final int firstPos = ii.position;
+                final int lastPos = mItems.get(itemCount - 1).position;
+                for (int pos = firstPos; pos < lastPos; pos++) {
+                    while (pos > ii.position && itemIndex < itemCount) {
+                        ii = mItems.get(++itemIndex);
+                    }
 
-                if (drawAt + mPageMargin > scrollX) {
-                    mMarginDrawable.setBounds(Math.round(drawAt), mTopPageBounds,
-                            Math.round(drawAt + mPageMargin), mBottomPageBounds);
-                    mMarginDrawable.draw(canvas);
-                }
+                    float drawAt;
+                    if (pos == ii.position) {
+                        drawAt = (ii.offset + ii.widthFactor) * width;
+                        offset = ii.offset + ii.widthFactor + marginOffset;
+                    } else {
+                        float widthFactor = mAdapter.getPageWidth(pos);
+                        drawAt = (offset + widthFactor) * width;
+                        offset += widthFactor + marginOffset;
+                    }
 
-                if (drawAt > scrollX + width) {
-                    break; // No more visible, no sense in continuing
+                    if (drawAt + mPageMargin > scrollX) {
+                        mMarginDrawable.setBounds(Math.round(drawAt), mTopPageBounds,
+                                Math.round(drawAt + mPageMargin), mBottomPageBounds);
+                        mMarginDrawable.draw(canvas);
+                    }
+
+                    if (drawAt > scrollX + width) {
+                        break; // No more visible, no sense in continuing
+                    }
                 }
             }
+        } else {
+            /*************方向是垂直********************/
+            // Draw the margin drawable between pages if needed.
+            if (mPageMargin > 0 && mMarginDrawable != null && mItems.size() > 0 && mAdapter != null) {
+                final int scrollY = getScrollY();
+                final int height = getHeight();
+
+                final float marginOffset = (float) mPageMargin / height;
+                int itemIndex = 0;
+                ItemInfo ii = mItems.get(0);
+                float offset = ii.offset;
+                final int itemCount = mItems.size();
+                final int firstPos = ii.position;
+                final int lastPos = mItems.get(itemCount - 1).position;
+                for (int pos = firstPos; pos < lastPos; pos++) {
+                    while (pos > ii.position && itemIndex < itemCount) {
+                        ii = mItems.get(++itemIndex);
+                    }
+
+                    float drawAt;
+                    if (pos == ii.position) {
+                        drawAt = (ii.offset + ii.widthFactor) * height;
+                        offset = ii.offset + ii.widthFactor + marginOffset;
+                    } else {
+                        float widthFactor = mAdapter.getPageWidth(pos);
+                        drawAt = (offset + widthFactor) * height;
+                        offset += widthFactor + marginOffset;
+                    }
+
+                    if (drawAt + mPageMargin > scrollY) {
+                        mMarginDrawable.setBounds(Math.round(drawAt), mTopPageBounds,
+                                Math.round(drawAt + mPageMargin), mBottomPageBounds);
+                        mMarginDrawable.setBounds(mLeftPageBounds, Math.round(drawAt),
+                                mRightPageBounds, Math.round(drawAt + mPageMargin));
+                        mMarginDrawable.draw(canvas);
+                    }
+
+                    if (drawAt > scrollY + height) {
+                        break; // No more visible, no sense in continuing
+                    }
+                }
+            }
+
         }
     }
+
+
 
     /**
      * Start a fake drag of the pager.
@@ -3114,6 +3451,7 @@ public class HardViewPager extends ViewGroup {
             // active pointer and adjust accordingly.
             final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
             mLastMotionX = ev.getX(newPointerIndex);
+            mLastMotionY = ev.getY(newPointerIndex);
             mActivePointerId = ev.getPointerId(newPointerIndex);
             if (mVelocityTracker != null) {
                 mVelocityTracker.clear();
@@ -3170,13 +3508,30 @@ public class HardViewPager extends ViewGroup {
         }
     }
 
+    @Override
+    public boolean canScrollVertically(int direction) {
+        if (mAdapter == null) {
+            return false;
+        }
+
+        final int height = getClientHeight();
+        final int scrollY = getScrollY();
+        if (direction < 0) {
+            return (scrollY > (int) (height * mFirstOffset));
+        } else if (direction > 0) {
+            return (scrollY < (int) (height * mLastOffset));
+        } else {
+            return false;
+        }
+    }
+
     /**
      * Tests scrollability within child views of v given a delta of dx.
      *
      * @param v      View to test for horizontal scrollability
      * @param checkV Whether the view v passed should itself be checked for scrollability (true),
      *               or just its children (false).
-     * @param dxy     Delta scrolled in pixels
+     * @param dxy    Delta scrolled in pixels
      * @param x      X coordinate of the active touch point
      * @param y      Y coordinate of the active touch point
      * @return true if child views of v can be scrolled by delta of dx.
@@ -3201,7 +3556,14 @@ public class HardViewPager extends ViewGroup {
             }
         }
 
-        return checkV && v.canScrollHorizontally(-dxy);
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            return checkV && v.canScrollHorizontally(-dxy);
+        } else {
+            /*************方向是垂直********************/
+            return checkV && canScrollVertically(-dxy);
+        }
+
     }
 
     @Override
@@ -3218,6 +3580,8 @@ public class HardViewPager extends ViewGroup {
      * @param event The key event to execute.
      * @return Return true if the event was handled, else false.
      */
+
+    //处理实体按键的左右滑动，现在不做处理
     public boolean executeKeyEvent(@NonNull KeyEvent event) {
         boolean handled = false;
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -3244,6 +3608,8 @@ public class HardViewPager extends ViewGroup {
                     }
                     break;
             }
+
+
         }
         return handled;
     }
@@ -3255,6 +3621,8 @@ public class HardViewPager extends ViewGroup {
      *                  either {@link View#FOCUS_LEFT} or {@link View#FOCUS_RIGHT}.
      * @return Whether the scrolling was handled successfully.
      */
+
+    //跟实体按键相关，不做处理
     public boolean arrowScroll(int direction) {
         View currentFocused = findFocus();
         if (currentFocused == this) {
@@ -3519,12 +3887,24 @@ public class HardViewPager extends ViewGroup {
             super.onInitializeAccessibilityNodeInfo(host, info);
             info.setClassName(HardViewPager.class.getName());
             info.setScrollable(canScroll());
-            if (canScrollHorizontally(1)) {
-                info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD);
+            /*************方向是水平********************/
+            if (mOrientation == Orientation.HORIZONTAL) {
+                if (canScrollHorizontally(1)) {
+                    info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD);
+                }
+                if (canScrollHorizontally(-1)) {
+                    info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD);
+                }
+            } else {
+                /*************方向是垂直********************/
+                if (canScrollVertically(1)) {
+                    info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD);
+                }
+                if (canScrollVertically(-1)) {
+                    info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD);
+                }
             }
-            if (canScrollHorizontally(-1)) {
-                info.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD);
-            }
+
         }
 
         @Override
@@ -3532,22 +3912,46 @@ public class HardViewPager extends ViewGroup {
             if (super.performAccessibilityAction(host, action, args)) {
                 return true;
             }
-            switch (action) {
-                case AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD: {
-                    if (canScrollHorizontally(1)) {
-                        setCurrentItem(mCurItem + 1);
-                        return true;
+            /*************方向是水平********************/
+            if (mOrientation == Orientation.HORIZONTAL) {
+                switch (action) {
+                    case AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD: {
+                        if (canScrollHorizontally(1)) {
+                            setCurrentItem(mCurItem + 1);
+                            return true;
+                        }
                     }
-                }
-                return false;
-                case AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD: {
-                    if (canScrollHorizontally(-1)) {
-                        setCurrentItem(mCurItem - 1);
-                        return true;
+                    return false;
+                    case AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD: {
+                        if (canScrollHorizontally(-1)) {
+                            setCurrentItem(mCurItem - 1);
+                            return true;
+                        }
                     }
+                    return false;
                 }
-                return false;
+
+            } else {
+                /*************方向是垂直********************/
+                switch (action) {
+                    case AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD: {
+                        if (canScrollVertically(1)) {
+                            setCurrentItem(mCurItem + 1);
+                            return true;
+                        }
+                    }
+                    return false;
+                    case AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD: {
+                        if (canScrollVertically(-1)) {
+                            setCurrentItem(mCurItem - 1);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
             }
+
             return false;
         }
 

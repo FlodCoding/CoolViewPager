@@ -33,6 +33,7 @@
             <!-- </intent-filter> -->
         </activity>
         <activity android:name=".ForTestActivity" />
+        <activity android:name=".ActivityOrientation2" />
     </application>
 
 </manifest>
