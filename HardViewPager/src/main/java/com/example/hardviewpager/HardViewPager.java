@@ -1245,7 +1245,7 @@ public class HardViewPager extends ViewGroup {
             return;
         }
 
-        //告诉 PagerAdapter要开始更新了，其实startUpdate 里面好像也没做什么事
+        //告诉 PagerAdapter要开始更新了，startUpdate
         mAdapter.startUpdate(this);
 
         //一般情况下mItems的长度是 2*pageLimit + 1
@@ -1295,68 +1295,34 @@ public class HardViewPager extends ViewGroup {
         // pages requested to either side, whichever is larger.
         // If we have no current item we have no work to do.
 
-        //**管理mItems中的其余对象
-        //由于mItems的长度是有限的，当页面总数大于mItems的长度时需要不断添加和移除ItemInfo进来
-        if (curItem != null) {
-            //**1、开始调整curItem左边的对象
-            //左边整体的的宽度（下面会进行累加计算，用一个抽象的数字代替）
-            float extraWidthLeft = 0.f;
-            //curIndex是mItems的当前索引，itemIndex是curIndex左边的索引
-            int itemIndex = curIndex - 1;
-            //获取左边的ItemInfo对象
-            ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
-            //显示区域的宽度
-            final int clientWidth = getClientWidth();
-            //左边需要的宽度:实际宽度和可视区域的比例，默认情况下是1.0f
-            final float leftWidthNeeded = clientWidth <= 0 ? 0 :
-                    2.f - curItem.widthFactor + (float) getPaddingLeft() / (float) clientWidth;
-            //遍历左半部分
-            for (int pos = mCurItem - 1; pos >= 0; pos--) {
-                //pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
-                if (extraWidthLeft >= leftWidthNeeded && pos < startPos) {
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
+            //**管理mItems中的其余对象
+            //由于mItems的长度是有限的，当页面总数大于mItems的长度时需要不断添加和移除ItemInfo进来
+            if (curItem != null) {
+                //**1、开始调整curItem左边的对象
+                //左边整体的的宽度（下面会进行累加计算，用一个抽象的数字代替）
+                float extraWidthLeft = 0.f;
+                //curIndex是mItems的当前索引，itemIndex是curIndex左边的索引
+                int itemIndex = curIndex - 1;
+                //获取左边的ItemInfo对象
+                ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+                //显示区域的宽度
+                final int clientWidth = getClientWidth();
+                //左边需要的宽度:实际宽度和可视区域的比例，默认情况下是1.0f
+                final float leftWidthNeeded = clientWidth <= 0 ? 0 :
+                        2.f - curItem.widthFactor + (float) getPaddingLeft() / (float) clientWidth;
+                //遍历左半部分
+                for (int pos = mCurItem - 1; pos >= 0; pos--) {
+                    //pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
+                    if (extraWidthLeft >= leftWidthNeeded && pos < startPos) {
 
-                    //如果是空的话就退出循环，说明已经遍历完了
-                    if (ii == null) {
-                        break;
-                    }
-
-                    //从下面拿到的ItemInfo，如果不为空就走下面的销毁和移除的流程
-                    if (pos == ii.position && !ii.scrolling) {
-                        mItems.remove(itemIndex);
-                        mAdapter.destroyItem(this, pos, ii.object);
-                        if (DEBUG) {
-                            Log.i(TAG, "populate() - destroyItem() with pos: " + pos
-                                    + " view: " + ((View) ii.object));
-                        }
-                        itemIndex--;//删除后左边的的索引也要减1
-                        curIndex--; //当前的索引也要减1
-                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;//然后会再次进入，并走上面的break
-                    }
-                } else if (ii != null && pos == ii.position) {
-                    extraWidthLeft += ii.widthFactor;//累加curItem左边需要的宽度
-                    itemIndex--;                     //在再向左移动一个位置
-                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
-                } else {
-                    ii = addNewItem(pos, itemIndex + 1);  //新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
-                    extraWidthLeft += ii.widthFactor;           //累加左边的宽度
-                    curIndex++;                                 //因为左边插入了一个对象，所以当前curIndex要加1
-                    ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
-                }
-            }
-
-            //**2、开始调整右半边的对象
-            float extraWidthRight = curItem.widthFactor; //右边整体宽度
-            itemIndex = curIndex + 1;                    //右边对象的索引
-            if (extraWidthRight < 2.f) {
-                //判断方式与上面大致相同
-                ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
-                final float rightWidthNeeded = clientWidth <= 0 ? 0 :
-                        (float) getPaddingRight() / (float) clientWidth + 2.f;
-                for (int pos = mCurItem + 1; pos < N; pos++) {
-                    if (extraWidthRight >= rightWidthNeeded && pos > endPos) {
+                        //如果是空的话就退出循环，说明已经遍历完了
                         if (ii == null) {
                             break;
                         }
+
+                        //从下面拿到的ItemInfo，如果不为空就走下面的销毁和移除的流程
                         if (pos == ii.position && !ii.scrolling) {
                             mItems.remove(itemIndex);
                             mAdapter.destroyItem(this, pos, ii.object);
@@ -1364,29 +1330,157 @@ public class HardViewPager extends ViewGroup {
                                 Log.i(TAG, "populate() - destroyItem() with pos: " + pos
                                         + " view: " + ((View) ii.object));
                             }
-                            ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                            itemIndex--;//删除后左边的的索引也要减1
+                            curIndex--; //当前的索引也要减1
+                            ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;//然后会再次进入，并走上面的break
                         }
                     } else if (ii != null && pos == ii.position) {
-                        extraWidthRight += ii.widthFactor;
-                        itemIndex++;
-                        ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        extraWidthLeft += ii.widthFactor;//累加curItem左边需要的宽度
+                        itemIndex--;                     //在再向左移动一个位置
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
                     } else {
-                        ii = addNewItem(pos, itemIndex);
-                        itemIndex++;
-                        extraWidthRight += ii.widthFactor;
-                        ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        ii = addNewItem(pos, itemIndex + 1);  //新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
+                        extraWidthLeft += ii.widthFactor;           //累加左边的宽度
+                        curIndex++;                                 //因为左边插入了一个对象，所以当前curIndex要加1
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
+                    }
+                }
+
+                //**2、开始调整右半边的对象
+                float extraWidthRight = curItem.widthFactor; //右边整体宽度
+                itemIndex = curIndex + 1;                    //右边对象的索引
+                if (extraWidthRight < 2.f) {
+                    //判断方式与上面大致相同
+                    ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                    final float rightWidthNeeded = clientWidth <= 0 ? 0 :
+                            (float) getPaddingRight() / (float) clientWidth + 2.f;
+                    for (int pos = mCurItem + 1; pos < N; pos++) {
+                        if (extraWidthRight >= rightWidthNeeded && pos > endPos) {
+                            if (ii == null) {
+                                break;
+                            }
+                            if (pos == ii.position && !ii.scrolling) {
+                                mItems.remove(itemIndex);
+                                mAdapter.destroyItem(this, pos, ii.object);
+                                if (DEBUG) {
+                                    Log.i(TAG, "populate() - destroyItem() with pos: " + pos
+                                            + " view: " + ((View) ii.object));
+                                }
+                                ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                            }
+                        } else if (ii != null && pos == ii.position) {
+                            extraWidthRight += ii.widthFactor;
+                            itemIndex++;
+                            ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        } else {
+                            ii = addNewItem(pos, itemIndex);
+                            itemIndex++;
+                            extraWidthRight += ii.widthFactor;
+                            ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        }
                     }
                 }
             }
+        } else {
+            /*************方向是垂直********************/
+            //**管理mItems中的其余对象
+            //由于mItems的长度是有限的，当页面总数大于mItems的长度时需要不断添加和移除ItemInfo进来
+            if (curItem != null) {
+                //**1、开始调整curItem左边的对象
+                //左边整体的的宽度（下面会进行累加计算，用一个抽象的数字代替）
+                float extraHeightTop = 0.f;
+                //curIndex是mItems的当前索引，itemIndex是curIndex左边的索引
+                int itemIndex = curIndex - 1;
+                //获取左边的ItemInfo对象
+                ItemInfo ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;
+                //显示区域的宽度
+                final int clientHeight = getClientHeight();
+                //左边需要的宽度:实际宽度和可视区域的比例，默认情况下是1.0f
+                final float topHeightNeeded = clientHeight <= 0 ? 0 :
+                        2.f - curItem.widthFactor + (float) getPaddingTop() / (float) clientHeight;
+                //遍历左半部分
+                for (int pos = mCurItem - 1; pos >= 0; pos--) {
+                    //pos < startPos说明已经遍历完了（所需要的宽度并没有期望的大）
+                    if (extraHeightTop >= topHeightNeeded && pos < startPos) {
 
-            //计算Items的偏移量
-            calculatePageOffsets(curItem, curIndex, oldCurInfo);
+                        //如果是空的话就退出循环，说明已经遍历完了
+                        if (ii == null) {
+                            break;
+                        }
 
-            //回调PagerAdapter的setPrimaryItem，告诉PagerAdapter当前显示的页面
-            mAdapter.setPrimaryItem(this, mCurItem, curItem.object);
+                        //从下面拿到的ItemInfo，如果不为空就走下面的销毁和移除的流程
+                        if (pos == ii.position && !ii.scrolling) {
+                            mItems.remove(itemIndex);
+                            mAdapter.destroyItem(this, pos, ii.object);
+                            if (DEBUG) {
+                                Log.i(TAG, "populate() - destroyItem() with pos: " + pos
+                                        + " view: " + ((View) ii.object));
+                            }
+                            itemIndex--;//删除后左边的的索引也要减1
+                            curIndex--; //当前的索引也要减1
+                            ii = itemIndex >= 0 ? mItems.get(itemIndex) : null;//然后会再次进入，并走上面的break
+                        }
+                    } else if (ii != null && pos == ii.position) {
+                        extraHeightTop += ii.widthFactor;//累加curItem左边需要的宽度
+                        itemIndex--;                     //在再向左移动一个位置
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
+                    } else {
+                        ii = addNewItem(pos, itemIndex + 1);  //新建一个ItemInfo添加到itemIndex的右边，也是curIndex的左边
+                        extraHeightTop += ii.widthFactor;           //累加左边的宽度
+                        curIndex++;                                 //因为左边插入了一个对象，所以当前curIndex要加1
+                        ii = itemIndex >= 0 ? mItems.get(itemIndex) : null; //拿到这个左左边的对象，如果是最后一个会准备走上面的移除流程
+                    }
+                }
+
+                //**2、开始调整右半边的对象
+                float extraHeightBottom = curItem.widthFactor; //右边整体宽度
+                itemIndex = curIndex + 1;                    //右边对象的索引
+                if (extraHeightBottom < 2.f) {
+                    //判断方式与上面大致相同
+                    ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                    final float BottomHeightNeeded = clientHeight <= 0 ? 0 :
+                            (float) getPaddingBottom() / (float) clientHeight + 2.f;
+                    for (int pos = mCurItem + 1; pos < N; pos++) {
+                        if (extraHeightBottom >= BottomHeightNeeded && pos > endPos) {
+                            if (ii == null) {
+                                break;
+                            }
+                            if (pos == ii.position && !ii.scrolling) {
+                                mItems.remove(itemIndex);
+                                mAdapter.destroyItem(this, pos, ii.object);
+                                if (DEBUG) {
+                                    Log.i(TAG, "populate() - destroyItem() with pos: " + pos
+                                            + " view: " + ((View) ii.object));
+                                }
+                                ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                            }
+                        } else if (ii != null && pos == ii.position) {
+                            extraHeightBottom += ii.widthFactor;
+                            itemIndex++;
+                            ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        } else {
+                            ii = addNewItem(pos, itemIndex);
+                            itemIndex++;
+                            extraHeightBottom += ii.widthFactor;
+                            ii = itemIndex < mItems.size() ? mItems.get(itemIndex) : null;
+                        }
+                    }
+                }
+
+            }
         }
 
-        if (DEBUG) {
+
+        //计算Items的偏移量
+        calculatePageOffsets(curItem, curIndex, oldCurInfo);
+
+        //回调PagerAdapter的setPrimaryItem，告诉PagerAdapter当前显示的页面
+        mAdapter.setPrimaryItem(this, mCurItem, curItem.object);
+
+
+        if (DEBUG)
+
+        {
             Log.i(TAG, "Current page list:");
             for (int i = 0; i < mItems.size(); i++) {
                 Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
@@ -1399,7 +1493,11 @@ public class HardViewPager extends ViewGroup {
         // Check width measurement of current pages and drawing sort order.
         // Update LayoutParams as needed.
         final int childCount = getChildCount();
-        for (int i = 0; i < childCount; i++) {
+        for (
+                int i = 0;
+                i < childCount; i++)
+
+        {
             final View child = getChildAt(i);
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
             lp.childIndex = i;
@@ -1412,9 +1510,14 @@ public class HardViewPager extends ViewGroup {
                 }
             }
         }
+
         sortChildDrawingOrder();
 
-        if (hasFocus()) {
+        if (
+
+                hasFocus())
+
+        {
             View currentFocused = findFocus();
             ItemInfo ii = currentFocused != null ? infoForAnyChild(currentFocused) : null;
             if (ii == null || ii.position != mCurItem) {
@@ -2317,14 +2420,19 @@ public class HardViewPager extends ViewGroup {
                 int y = mScroller.getCurrY();
                 if (oldX != x || oldY != y) {
                     scrollTo(x, y);
-                    if (x != oldX) {
-                        /*************方向是水平********************/
-                        if (mOrientation == Orientation.HORIZONTAL)
+                    /*************方向是水平********************/
+                    if (mOrientation == Orientation.HORIZONTAL) {
+                        if (x != oldX) {
                             pageScrolled(x);
-                        else
+                        }
+                    } else {
                         /*************方向是垂直********************/
+                        if (y != oldY) {
                             pageScrolled(y);
+                        }
+
                     }
+
                 }
             }
         }
@@ -3052,7 +3160,7 @@ public class HardViewPager extends ViewGroup {
             //把scrollX小数加到mLastMotionX 不清楚这么做的意义
             mLastMotionY += scrollY - (int) scrollY;
             //执行滑动
-            scrollTo( getScrollX(), (int)scrollY);
+            scrollTo(getScrollX(), (int) scrollY);
             pageScrolled((int) scrollY);
         }
 
@@ -3156,7 +3264,8 @@ public class HardViewPager extends ViewGroup {
     }
 
     //推算滑动后的页面是哪一个
-    private int determineTargetPage(int currentPage, float pageOffset, int velocity, int deltaXY) {
+    private int determineTargetPage(int currentPage, float pageOffset, int velocity,
+                                    int deltaXY) {
         int targetPage;
         if (Math.abs(deltaXY) > mFlingDistance && Math.abs(velocity) > mMinimumVelocity) {
             targetPage = velocity > 0 ? currentPage : currentPage + 1;
@@ -3309,7 +3418,6 @@ public class HardViewPager extends ViewGroup {
 
         }
     }
-
 
 
     /**

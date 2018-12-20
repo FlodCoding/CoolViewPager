@@ -3,7 +3,6 @@ package com.huanhailiuxin.demo.coolviewpager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -102,13 +101,7 @@ public class ActivityOrientation extends BaseActivity {
         public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
             container.removeView((View) object);
 
-            /*************方向是水平********************/
-            if (mOrientation == Orientation.HORIZONTAL) {
 
-            } else {
-                /*************方向是垂直********************/
-
-            }
         }
     }
 }
