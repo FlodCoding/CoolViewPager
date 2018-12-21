@@ -104,7 +104,7 @@ import java.util.List;
  * <p>You can find examples of using ViewPager in the API 4+ Support Demos and API 13+ Support Demos
  * sample code.
  */
-public class HardViewPager extends ViewGroup {
+public class Test extends ViewGroup {
     private static final String TAG = "ViewPager";
     private static final boolean DEBUG = true;
 
@@ -325,9 +325,9 @@ public class HardViewPager extends ViewGroup {
          * or when it is fully stopped/idle.
          *
          * @param state The new scroll state.
-         * @see HardViewPager#SCROLL_STATE_IDLE
-         * @see HardViewPager#SCROLL_STATE_DRAGGING
-         * @see HardViewPager#SCROLL_STATE_SETTLING
+         * @see Test#SCROLL_STATE_IDLE
+         * @see Test#SCROLL_STATE_DRAGGING
+         * @see Test#SCROLL_STATE_SETTLING
          */
         void onPageScrollStateChanged(int state);
     }
@@ -386,7 +386,7 @@ public class HardViewPager extends ViewGroup {
          * @param oldAdapter the previously set adapter
          * @param newAdapter the newly set adapter
          */
-        void onAdapterChanged(@NonNull HardViewPager viewPager,
+        void onAdapterChanged(@NonNull Test viewPager,
                               @Nullable PagerAdapter oldAdapter, @Nullable PagerAdapter newAdapter);
     }
 
@@ -406,12 +406,12 @@ public class HardViewPager extends ViewGroup {
     public @interface DecorView {
     }
 
-    public HardViewPager(@NonNull Context context) {
+    public Test(@NonNull Context context) {
         super(context);
         initViewPager();
     }
 
-    public HardViewPager(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public Test(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         initViewPager();
     }
@@ -702,10 +702,10 @@ public class HardViewPager extends ViewGroup {
     private void scrollToItem(int item, boolean smoothScroll, int velocity,
                               boolean dispatchSelected) {
 
-
+        /*************方向是水平********************/
+        if (mOrientation == Orientation.HORIZONTAL) {
             final ItemInfo curInfo = infoForPosition(item);
             int destX = 0;
-            int destY = 0;
             if (curInfo != null) {
                 final int width = getClientWidth();
                 destX = (int) (width * Math.max(mFirstOffset,
@@ -724,8 +724,9 @@ public class HardViewPager extends ViewGroup {
                 scrollTo(destX, 0);
                 pageScrolled(destX);
             }
-
-            /*final ItemInfo curInfo = infoForPosition(item);
+        } else {
+            /*************方向是垂直********************/
+            final ItemInfo curInfo = infoForPosition(item);
             int destY = 0;
             if (curInfo != null) {
                 final int height = getClientHeight();
@@ -744,7 +745,8 @@ public class HardViewPager extends ViewGroup {
                 completeScroll(false);
                 scrollTo(0, destY);
                 pageScrolled(destY);
-            }*/
+            }
+        }
 
 
     }
@@ -3980,7 +3982,7 @@ public class HardViewPager extends ViewGroup {
         @Override
         public void onInitializeAccessibilityEvent(View host, AccessibilityEvent event) {
             super.onInitializeAccessibilityEvent(host, event);
-            event.setClassName(HardViewPager.class.getName());
+            event.setClassName(Test.class.getName());
             event.setScrollable(canScroll());
             if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_SCROLLED && mAdapter != null) {
                 event.setItemCount(mAdapter.getCount());
@@ -3992,7 +3994,7 @@ public class HardViewPager extends ViewGroup {
         @Override
         public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfoCompat info) {
             super.onInitializeAccessibilityNodeInfo(host, info);
-            info.setClassName(HardViewPager.class.getName());
+            info.setClassName(Test.class.getName());
             info.setScrollable(canScroll());
             /*************方向是水平********************/
             if (mOrientation == Orientation.HORIZONTAL) {
