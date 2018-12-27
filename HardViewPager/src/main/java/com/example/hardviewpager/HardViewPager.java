@@ -295,6 +295,8 @@ public class HardViewPager extends ViewGroup {
         HORIZONTAL, VERTICAL
     }
 
+    private boolean isHorizontal = false;
+
     /**
      * Callback interface for responding to changing state of the selected page.
      */
@@ -702,28 +704,35 @@ public class HardViewPager extends ViewGroup {
     private void scrollToItem(int item, boolean smoothScroll, int velocity,
                               boolean dispatchSelected) {
 
-
-            final ItemInfo curInfo = infoForPosition(item);
-            int destX = 0;
-            int destY = 0;
-            if (curInfo != null) {
-                final int width = getClientWidth();
+        final ItemInfo curInfo = infoForPosition(item);
+        int destX = 0;
+        int destY = 0;
+        if (curInfo != null) {
+            final int width = getClientWidth();
+            final int height = getClientHeight();
+            if (isHorizontal) {
                 destX = (int) (width * Math.max(mFirstOffset,
                         Math.min(curInfo.offset, mLastOffset)));
-            }
-            if (smoothScroll) {
-                smoothScrollTo(destX, 0, velocity);
-                if (dispatchSelected) {
-                    dispatchOnPageSelected(item);
-                }
             } else {
-                if (dispatchSelected) {
-                    dispatchOnPageSelected(item);
-                }
-                completeScroll(false);
-                scrollTo(destX, 0);
-                pageScrolled(destX);
+                destY = (int) (height * Math.max(mFirstOffset,
+                        Math.min(curInfo.offset, mLastOffset)));
             }
+
+
+        }
+        if (smoothScroll) {
+            smoothScrollTo(destX, destY, velocity);
+            if (dispatchSelected) {
+                dispatchOnPageSelected(item);
+            }
+        } else {
+            if (dispatchSelected) {
+                dispatchOnPageSelected(item);
+            }
+            completeScroll(false);
+            scrollTo(destX, destY);
+            pageScrolled(isHorizontal ? destX : destY);
+        }
 
             /*final ItemInfo curInfo = infoForPosition(item);
             int destY = 0;
