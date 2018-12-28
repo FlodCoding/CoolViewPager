@@ -733,29 +733,6 @@ public class HardViewPager extends ViewGroup {
             scrollTo(destX, destY);
             pageScrolled(isHorizontal ? destX : destY);
         }
-
-            /*final ItemInfo curInfo = infoForPosition(item);
-            int destY = 0;
-            if (curInfo != null) {
-                final int height = getClientHeight();
-                destY = (int) (height * Math.max(mFirstOffset,
-                        Math.min(curInfo.offset, mLastOffset)));
-            }
-            if (smoothScroll) {
-                smoothScrollTo(0, destY, velocity);
-                if (dispatchSelected) {
-                    dispatchOnPageSelected(item);
-                }
-            } else {
-                if (dispatchSelected) {
-                    dispatchOnPageSelected(item);
-                }
-                completeScroll(false);
-                scrollTo(0, destY);
-                pageScrolled(destY);
-            }*/
-
-
     }
 
     /**
@@ -1015,120 +992,70 @@ public class HardViewPager extends ViewGroup {
             return;
         }
 
-        int sxy;
+        int sx, sy;
         boolean wasScrolling = (mScroller != null) && !mScroller.isFinished();
 
-        /*************方向是水平********************/
-        if (mOrientation == Orientation.HORIZONTAL) {
-            if (wasScrolling) {
-                // We're in the middle of a previously initiated scrolling. Check to see
-                // whether that scrolling has actually started (if we always call getStartX
-                // we can get a stale value from the scroller if it hadn't yet had its first
-                // computeScrollOffset call) to decide what is the current scrolling position.
-                sxy = mIsScrollStarted ? mScroller.getCurrX() : mScroller.getStartX();
-                // And abort the current scrolling.
-                mScroller.abortAnimation();
-                setScrollingCacheEnabled(false);
+        if (wasScrolling) {
+            // We're in the middle of a previously initiated scrolling. Check to see
+            // whether that scrolling has actually started (if we always call getStartX
+            // we can get a stale value from the scroller if it hadn't yet had its first
+            // computeScrollOffset call) to decide what is the current scrolling position.
+            if (isHorizontal) {
+                sx = mIsScrollStarted ? mScroller.getCurrX() : mScroller.getStartX();
+                sy = getScrollY();
             } else {
-                sxy = getScrollX();
-            }
-            int sy = getScrollY();
-            int dx = x - sxy;
-            int dy = y - sy;
-            if (dx == 0 && dy == 0) {
-                completeScroll(false);
-                populate();
-                setScrollState(SCROLL_STATE_IDLE);
-                return;
+                sx = getScrollX();
+                sy = mIsScrollStarted ? mScroller.getCurrY() : mScroller.getStartY();
             }
 
-            setScrollingCacheEnabled(true);
-            setScrollState(SCROLL_STATE_SETTLING);
-
-            final int width = getClientWidth();
-            final int halfWidth = width / 2;
-
-            //滑动距离占宽度的比例
-            final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dx) / width);
-            //进行变速
-            final float distance = halfWidth + halfWidth
-                    * distanceInfluenceForSnapDuration(distanceRatio);
-
-            int duration;
-            velocity = Math.abs(velocity);
-            if (velocity > 0) {
-                //推算出需要滑动的时间：4倍的手指滑动时间
-                duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
-            } else {
-                //如果手指滑动速度0，就自己推算滑动时间
-                final float pageWidth = width * mAdapter.getPageWidth(mCurItem);
-                final float pageDelta = (float) Math.abs(dx) / (pageWidth + mPageMargin);
-                duration = (int) ((pageDelta + 1) * 100);
-            }
-            //未设置过,则采用原始逻辑获取duration
-            duration = Math.min(duration, MAX_SETTLE_DURATION);
-
-            // Reset the "scroll started" flag. It will be flipped to true in all places
-            // where we call computeScrollOffset().
-            mIsScrollStarted = false;
-            mScroller.startScroll(sxy, sy, dx, dy, duration);
+            // And abort the current scrolling.
+            mScroller.abortAnimation();
+            setScrollingCacheEnabled(false);
         } else {
-            /*************方向是垂直********************/
-            if (wasScrolling) {
-                // We're in the middle of a previously initiated scrolling. Check to see
-                // whether that scrolling has actually started (if we always call getStartX
-                // we can get a stale value from the scroller if it hadn't yet had its first
-                // computeScrollOffset call) to decide what is the current scrolling position.
-                sxy = mIsScrollStarted ? mScroller.getCurrY() : mScroller.getStartY();
-                // And abort the current scrolling.
-                mScroller.abortAnimation();
-                setScrollingCacheEnabled(false);
-            } else {
-                sxy = getScrollY();
-            }
-            int sx = getScrollX();
-            int dx = x - sx;
-            int dy = y - sxy;
-            if (dx == 0 && dy == 0) {
-                completeScroll(false);
-                populate();
-                setScrollState(SCROLL_STATE_IDLE);
-                return;
-            }
-
-            setScrollingCacheEnabled(true);
-            setScrollState(SCROLL_STATE_SETTLING);
-
-            final int height = getClientHeight();
-            final int halfHeight = height / 2;
-
-            //滑动距离占宽度的比例
-            final float distanceRatio = Math.min(1f, 1.0f * Math.abs(dy) / height);
-            //进行变速
-            final float distance = halfHeight + halfHeight
-                    * distanceInfluenceForSnapDuration(distanceRatio);
-
-            int duration;
-            velocity = Math.abs(velocity);
-            if (velocity > 0) {
-                //推算出需要滑动的时间：4倍的手指滑动时间
-                duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
-            } else {
-                //如果手指滑动速度0，就自己推算滑动时间
-                final float pageHeight = height * mAdapter.getPageWidth(mCurItem);
-                final float pageDelta = (float) Math.abs(dx) / (pageHeight + mPageMargin);
-                duration = (int) ((pageDelta + 1) * 100);
-            }
-            //未设置过,则采用原始逻辑获取duration
-            duration = Math.min(duration, MAX_SETTLE_DURATION);
-
-            // Reset the "scroll started" flag. It will be flipped to true in all places
-            // where we call computeScrollOffset().
-            mIsScrollStarted = false;
-            mScroller.startScroll(sx, sxy, dx, dy, duration);
-
+            sx = getScrollX();
+            sy = getScrollY();
+        }
+        int dx = x - sx;
+        int dy = y - sy;
+        if (dx == 0 && dy == 0) {
+            completeScroll(false);
+            populate();
+            setScrollState(SCROLL_STATE_IDLE);
+            return;
         }
 
+        setScrollingCacheEnabled(true);
+        setScrollState(SCROLL_STATE_SETTLING);
+
+        final int clientSize = isHorizontal ? getClientWidth() : getClientHeight();
+        //final int width = getClientWidth();
+        //final int Height = getClientHeight();
+        final int halfClientSize = clientSize / 2;
+
+        //滑动距离占宽度的比例
+        final float distanceRatio = Math.min(1f, 1.0f * Math.abs(isHorizontal ? dx : dy) / clientSize);
+        //进行变速
+        final float distance = halfClientSize + halfClientSize
+                * distanceInfluenceForSnapDuration(distanceRatio);
+
+        int duration;
+        velocity = Math.abs(velocity);
+        if (velocity > 0) {
+            //推算出需要滑动的时间：4倍的手指滑动时间
+            duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
+        } else {
+            //如果手指滑动速度0，就自己推算滑动时间
+            final float pageSize = clientSize * mAdapter.getPageWidth(mCurItem);
+            final float pageDelta = (float) Math.abs(isHorizontal ? dx : dy) / (pageSize + mPageMargin);
+            duration = (int) ((pageDelta + 1) * 100);
+        }
+        //未设置过,则采用原始逻辑获取duration
+        duration = Math.min(duration, MAX_SETTLE_DURATION);
+
+        // Reset the "scroll started" flag. It will be flipped to true in all places
+        // where we call computeScrollOffset().
+        mIsScrollStarted = false;
+        mScroller.startScroll(sx, sy, dx, dy, duration);
         ViewCompat.postInvalidateOnAnimation(this);
     }
 
