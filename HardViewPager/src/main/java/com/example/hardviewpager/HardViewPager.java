@@ -2339,7 +2339,7 @@ public class HardViewPager extends ViewGroup {
                         ViewCompat.postInvalidateOnAnimation(this);
                     }
                 }
-                break; 
+                break;
             }
 
             case MotionEvent.ACTION_DOWN: {
