@@ -2,20 +2,19 @@ package com.huanhailiuxin.demo.coolviewpager;
 
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.huanhailiuxin.coolviewpager.CoolViewPager;
+import com.example.hardviewpager.HardViewPager;
+import com.example.hardviewpager.PagerAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ActivityOrientation extends BaseActivity {
-    private CoolViewPager vp;
+public class ActivityOrientation2 extends BaseActivity {
+    private HardViewPager vp;
     MyAdapter adapter1;
     MyAdapter adapter2;
 
@@ -24,7 +23,7 @@ public class ActivityOrientation extends BaseActivity {
         super.onCreate(savedInstanceState);
         getWindow().requestFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN|WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setContentView(R.layout.activity_orientation);
+        setContentView(R.layout.activity_orientation2);
         getSupportActionBar().hide();
         initViews();
     }
@@ -51,22 +50,12 @@ public class ActivityOrientation extends BaseActivity {
         adapter2 = new MyAdapter(items2);
         //
         vp = findViewById(R.id.vp);
-        vp.setScrollMode(CoolViewPager.ScrollMode.HORIZONTAL);
         vp.setOffscreenPageLimit(1);
         vp.setAdapter(adapter1);
     }
 
     private int index = 0;
     public void buttonClick(View view) {
-        if(index % 2 == 0){
-            vp.setScrollMode(CoolViewPager.ScrollMode.VERTICAL);
-            vp.setAdapter(adapter2);
-            index = 1;
-        }else{
-            vp.setScrollMode(CoolViewPager.ScrollMode.HORIZONTAL);
-            vp.setAdapter(adapter1);
-            index = 0;
-        }
     }
 
 
@@ -101,14 +90,6 @@ public class ActivityOrientation extends BaseActivity {
         @Override
         public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
             container.removeView((View) object);
-
-            /*************方向是水平********************/
-            if (mOrientation == Orientation.HORIZONTAL) {
-
-            } else {
-                /*************方向是垂直********************/
-
-            }
         }
     }
 }

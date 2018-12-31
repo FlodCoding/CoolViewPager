@@ -197,7 +197,7 @@ public class ViewPager extends ViewGroup {
     private int mOffscreenPageLimit = DEFAULT_OFFSCREEN_PAGES;
 
     private boolean mIsBeingDragged;
-    private boolean mIsUnableToDrag;
+    private boolean mIsUnableToDrag; //判定当前的手指的Move动作是否有效
     private int mDefaultGutterSize;
     private int mGutterSize;
     private int mTouchSlop;//系统所能识别的最小滑动距离
@@ -1949,12 +1949,15 @@ public class ViewPager extends ViewGroup {
     @CallSuper
     protected void onPageScrolled(int position, float offset, int offsetPixels) {
         // Offset any decor views if needed - keep them on-screen at all times.
+
+        //TODO 处理DecorView 原理不明白
         if (mDecorChildCount > 0) {
             final int scrollX = getScrollX();
             int paddingLeft = getPaddingLeft();
             int paddingRight = getPaddingRight();
             final int width = getWidth();
             final int childCount = getChildCount();
+
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
                 final LayoutParams lp = (LayoutParams) child.getLayoutParams();
@@ -2179,6 +2182,7 @@ public class ViewPager extends ViewGroup {
                     mLastMotionX = x;
                     mLastMotionY = y;
                     //标记现在不可以再拖拽页面了，防止另一个手指按下（ACTION_DOWN）而被影响到
+                    //提前结束Move 动作，后面的move动作都屏蔽
                     mIsUnableToDrag = true;
                     return false;
                 }
@@ -2188,17 +2192,19 @@ public class ViewPager extends ViewGroup {
                     mIsBeingDragged = true;
                     requestParentDisallowInterceptTouchEvent(true);
                     setScrollState(SCROLL_STATE_DRAGGING);
-                    //保存当前的移动位置
+                    //TODO 为何是这个值
                     mLastMotionX = dx > 0
                             ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
                     mLastMotionY = y;
                     setScrollingCacheEnabled(true);
                 } else if (yDiff > mTouchSlop) {
+                    //手指垂直上的滑动已经超过最小判定滑动的距离了，所以就
                     // The finger has moved enough in the vertical
                     // direction to be counted as a drag...  abort
                     // any attempt to drag horizontally, to work correctly
                     // with children that have scrolling containers.
                     if (DEBUG) Log.v(TAG, "Starting unable to drag!");
+                    //结束Move 动作，后面的move动作都屏蔽
                     mIsUnableToDrag = true;
                 }
                 if (mIsBeingDragged) {
