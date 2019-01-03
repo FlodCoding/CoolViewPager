@@ -1940,7 +1940,7 @@ public class HardViewPager extends ViewGroup {
             if (oldX != x || oldY != y) {
                 scrollTo(x, y);
                 //确保mScroller还没结束滑动，并开始计算滑动位置
-                if (pageScrolled(isHorizontal ? x : y)) {
+                if (!pageScrolled(isHorizontal ? x : y)) {
                     //如果没有子页面中断动画并且滑动到x=0位置，但是y保持滑动
                     int offX = isHorizontal ? 0 : x;
                     int offY = isHorizontal ? y : 0;
